@@ -1,0 +1,33 @@
+{
+  "window": {
+    "width": 128,
+    "height": 128,
+    "transparentColor": "#ff00ff"
+  },
+  "spriteSheet": {
+    "path": "top.png",
+    "cellWidth": 128,
+    "cellHeight": 128,
+    "cols": 8,
+    "rows": 3
+  },
+  "animations": {
+    "idle":     { "row": 0, "frames": 4, "fps": 6,  "loop": true },
+    "spawn":    { "row": 1, "frames": 6, "fps": 10, "loop": false },
+    "clicked":  { "row": 2, "frames": 5, "fps": 12, "loop": false },
+    "reminder": { "row": 2, "frames": 5, "fps": 8,  "loop": false }
+  },
+  "audio": {
+    "startup":  "audio/startup.wav",
+    "click":    "audio/click.wav",
+    "reminder": "audio/reminder.wav"
+  },
+  "rest": {
+    "threshold": 100,
+    "messages": [
+      "你已经按了 {total} 次键盘啦，起来活动一下，休息 5 分钟吧~",
+      "连续敲键盘太久了，喝口水、眺望远处，眼睛也需要休息哦！"
+    ]
+  },
+  "countFile": "key_counts.json"
+}

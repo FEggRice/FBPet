@@ -1,0 +1,20 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# PyInstaller 构建产物
+build/
+dist/
+
+# 运行时数据（本地键盘统计）
+key_counts.json
+
+# 本地工具配置
+.claude/
+
+# IDE / 系统文件
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
