@@ -10,6 +10,26 @@ from PIL import Image, ImageDraw
 
 _KEY = (255, 0, 255)  # matches default transparentColor in config; never used in sprites
 
+CHARACTER_EXTS = (".png", ".gif")
+SPRITES_DIR = "sprites"
+
+
+def discover_characters(base_dir: str) -> list[str]:
+    """Character choices: image files in <base_dir>/sprites (or base_dir if the
+    folder doesn't exist yet)."""
+    folder = os.path.join(base_dir, SPRITES_DIR)
+    if not os.path.isdir(folder):
+        folder = base_dir
+    return sorted(f for f in os.listdir(folder) if f.lower().endswith(CHARACTER_EXTS))
+
+
+def discover_sounds(base_dir: str) -> list[str]:
+    """Sound choices: wav files in <base_dir>/audio."""
+    audio_dir = os.path.join(base_dir, "audio")
+    if not os.path.isdir(audio_dir):
+        return []
+    return sorted(f for f in os.listdir(audio_dir) if f.lower().endswith(".wav"))
+
 
 def ensure_assets(cfg, force: bool = False) -> None:
     sheet = cfg.sprite_sheet

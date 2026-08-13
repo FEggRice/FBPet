@@ -59,17 +59,27 @@ app.events.on("rest_reminder", lambda total: print(f"[reminder] {total} keys"))
 
 ## 换皮肤 / 换主题图
 
-**最简单的方式：放一张透明 PNG 或 GIF，然后改 `config.json` 里 `spriteSheet.path` 指向它，重启即可。** 启动时自动识别三种来源：
+所有人物图放在 **`sprites/`** 文件夹里（png / gif 都行）。设置里的"桌宠人物"下拉会自动列出它们，选中保存 = 整个桌宠换成它。
 
-| 你的图 | 效果 |
-|--------|------|
-| 一张透明 PNG（如 `top.png`） | 静态宠物，所有状态共用同一张图 |
-| 一张 GIF | 播放 GIF 循环，所有状态共用这段动画 |
-| 精灵表（多行多列等格子） | 按 `animations` 的 `row`/`frames` 裁剪播放 |
+每个动画状态还能**单独指定**自己的图：在 `config.json` 的 `animations` 里给该状态加 `file`。
 
-- 单图 / GIF 会等比缩放到 `window.width`×`window.height` 以内（不会放大变糊）。
+```json
+"animations": {
+  "idle":     { "file": "sprites/idel.gif", "fps": 10, "loop": true },
+  "spawn":    { "file": "sprites/hi.gif",   "fps": 10, "loop": false },
+  "clicked":  { "fps": 12, "loop": false }
+}
+```
+
+帧来源优先级：
+1. 状态有 `file` → 用这个 gif（循环播放）/ 单图（静态）。
+2. 状态有 `row` 且 `spriteSheet.path` 是精灵表 → 按行裁剪。
+3. 其它没指定来源的状态 → 复用 `idle` 的帧（所以上面 clicked 会播 idle 的图）。
+
+- gif / 单图会等比缩放到 `window.width`×`window.height` 以内（不放大变糊）；调大 `window` 的宽高可以让宠物更大。
 - 精灵表的宽高必须能被 `cellWidth`×`cellHeight` 整除，否则会被当成单图。
-- 换音频：覆盖 `audio/` 下的 wav，同名即可。
+- 换音频：覆盖 `audio/` 下的 wav（启动音、提醒音同名即可）；点击音是 `audio/click/` 文件夹里的 mp3 / wav，点宠物时会**随机**播一个。
+- **鬼畜模式**（`audio.overlap`，设置里勾选）：打开后点击音**重叠播放**、不用等上一个播完。底层用 `pygame.mixer` 多声道，声道数 = 设置里的"点击音池大小"（配置项 `audio.poolSize`，默认 6，池满回收最老的）；MCI mpegvideo 只能单路出声，所以普通模式仍走 MCI（切断上一个）。
 - 删掉主题图 + `audio/` 目录，下次启动会自动重新生成占位素材。
 
 ## 加新配置项

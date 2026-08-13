@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 
 from PIL import ImageTk
 
@@ -55,6 +55,13 @@ class PetWindow:
         if imgs and index < len(imgs):
             self._label.config(image=imgs[index])
 
+    def reload_frames(self) -> None:
+        """Re-read the sprite sheet / image and resize in place (for settings)."""
+        self.frames, display = self._load_frames()
+        x, y = self.root.winfo_x(), self.root.winfo_y()
+        w, h = display
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+
     def hide(self) -> None:
         self.root.withdraw()
 
@@ -75,7 +82,7 @@ class PetWindow:
             self.cfg.get("window", "width", default=128),
             self.cfg.get("window", "height", default=128),
         )
-        frames, size = load_frames(path, sheet, self.cfg.animations, box)
+        frames, size = load_frames(path, self.cfg.base_dir, sheet, self.cfg.animations, box)
         return {name: [ImageTk.PhotoImage(im, master=self.root) for im in imgs] for name, imgs in frames.items()}, size
 
     # -- input ---------------------------------------------------------------
@@ -176,30 +183,77 @@ class BubbleWindow:
 
 
 class SettingsDialog:
-    def __init__(self, root, threshold: int, total: int, on_save, on_reset) -> None:
+    """Threshold + counter reset, plus character and sound-effect pickers."""
+
+    SOUND_KEYS = ("startup", "reminder")
+    SOUND_LABELS = {"startup": "启动音", "reminder": "提醒音"}
+
+    def __init__(self, root, threshold: int, total: int, characters: list[str],
+                 current_character: str, sounds: list[str], current_sounds: dict,
+                 ghost_mode: bool, pool_size: int, on_save, on_reset, on_preview) -> None:
         self.win = tk.Toplevel(root)
         self.win.title("设置")
         self.win.resizable(False, False)
         self.win.attributes("-topmost", True)
         self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
 
+        self._on_save = on_save
+        self._on_reset = on_reset
+        self._on_preview = on_preview
+
         frame = tk.Frame(self.win, padx=16, pady=16)
         frame.pack()
+
         self._total_label = tk.Label(frame, text=f"累计按键次数：{total}")
-        self._total_label.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+        self._total_label.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 12))
+
         tk.Label(frame, text="休息提醒阈值：").grid(row=1, column=0, sticky="w")
         self._entry = tk.Entry(frame, width=8)
         self._entry.insert(0, str(threshold))
         self._entry.grid(row=1, column=1, sticky="w")
-        tk.Button(frame, text="重置按键计数", command=self._reset).grid(row=2, column=0, sticky="w", pady=(12, 0))
-        tk.Button(frame, text="保存", command=self._save).grid(row=2, column=1, sticky="e", pady=(12, 0))
 
-        self._on_save = on_save
-        self._on_reset = on_reset
+        row = 2
+        tk.Label(frame, text="桌宠人物：").grid(row=row, column=0, sticky="w", pady=(14, 0))
+        self._character = ttk.Combobox(frame, values=characters, state="readonly", width=16)
+        self._character.set(current_character if current_character in characters
+                           else (characters[0] if characters else ""))
+        self._character.grid(row=row, column=1, columnspan=2, sticky="w", pady=(14, 0))
+
+        row += 1
+        tk.Label(frame, text="音效：").grid(row=row, column=0, columnspan=3, sticky="w", pady=(14, 0))
+        self._sound_cbs: dict[str, ttk.Combobox] = {}
+        for key in self.SOUND_KEYS:
+            row += 1
+            tk.Label(frame, text=self.SOUND_LABELS[key]).grid(row=row, column=0, sticky="w")
+            cb = ttk.Combobox(frame, values=sounds, state="readonly", width=14)
+            current = current_sounds.get(key, "")
+            cb.set(current if current in sounds else (sounds[0] if sounds else ""))
+            cb.grid(row=row, column=1, sticky="w")
+            tk.Button(frame, text="试听", width=4, command=lambda c=cb: self._preview(c)).grid(
+                row=row, column=2, sticky="e", padx=(6, 0))
+            self._sound_cbs[key] = cb
+
+        row += 1
+        self._ghost_var = tk.BooleanVar(value=bool(ghost_mode))
+        tk.Checkbutton(frame, text="鬼畜模式", variable=self._ghost_var,
+                       anchor="w").grid(row=row, column=0, sticky="w", pady=(14, 0))
+        tk.Label(frame, text="点击音池大小（选填）：").grid(row=row, column=1, sticky="w", pady=(14, 0))
+        self._pool_entry = tk.Entry(frame, width=6)
+        self._pool_entry.insert(0, str(pool_size))
+        self._pool_entry.grid(row=row, column=2, sticky="w", pady=(14, 0))
+
+        row += 1
+        tk.Button(frame, text="重置按键计数", command=self._reset).grid(row=row, column=0, sticky="w", pady=(14, 0))
+        tk.Button(frame, text="保存", command=self._save).grid(row=row, column=1, columnspan=2, sticky="e", pady=(14, 0))
 
     def show(self) -> None:
         self.win.deiconify()
         self.win.lift()
+
+    def _preview(self, cb: ttk.Combobox) -> None:
+        name = cb.get()
+        if name:
+            self._on_preview(name)
 
     def _reset(self) -> None:
         self._on_reset()
@@ -213,5 +267,16 @@ class SettingsDialog:
         if value <= 0:
             messagebox.showwarning("设置", "阈值必须是大于 0 的整数", parent=self.win)
             return
-        self._on_save(value)
+        pool_text = self._pool_entry.get().strip()
+        pool_size = None
+        if pool_text:
+            try:
+                pool_size = int(pool_text)
+            except ValueError:
+                pool_size = 0
+            if pool_size <= 0:
+                messagebox.showwarning("设置", "池大小必须是大于 0 的整数，留空则用默认值", parent=self.win)
+                return
+        sounds = {key: cb.get() for key, cb in self._sound_cbs.items()}
+        self._on_save(value, self._character.get(), sounds, self._ghost_var.get(), pool_size)
         self.win.destroy()

@@ -35,8 +35,11 @@ class PetApp:
 
         assets.ensure_assets(self.cfg)
         self.audio = AudioPlayer()
-        for key in ("startup", "click", "reminder"):
+        for key in ("startup", "reminder"):
             self.audio.register(key, self.cfg.resolve(self.cfg.audio.get(key, f"audio/{key}.wav")))
+        self.audio.register_folder("click", self.cfg.resolve("audio/click"))
+        self.audio.overlap = bool(self.cfg.get("audio", "overlap", default=False))
+        self.audio.set_pool_size(self.cfg.get("audio", "poolSize", default=AudioPlayer._POOL_SIZE))
 
         self._ui_q: queue.Queue = queue.Queue()
         self._load_counter()
@@ -114,9 +117,9 @@ class PetApp:
     # -- behaviors -----------------------------------------------------------
 
     def _on_click(self) -> None:
+        self.audio.play("click")  # 音效不受动画状态门控：连点才能叠音
         if self._state == "idle":
             self._goto("clicked")
-            self.audio.play("click")
 
     def _on_reminder(self, total: int) -> None:
         self._goto("reminder")
@@ -147,19 +150,59 @@ class PetApp:
         if self._settings and self._settings.win.winfo_exists():
             self._settings.win.lift()
             return
+        characters = assets.discover_characters(self.cfg.base_dir)
+        current_character = os.path.basename(
+            self.cfg.resolve(self.cfg.sprite_sheet.get("path", "pet.png")))
+        self._settings_prev_character = current_character
+        sounds = assets.discover_sounds(self.cfg.base_dir)
+        current_sounds = {key: os.path.basename(self.cfg.resolve(self.cfg.audio.get(key, f"audio/{key}.wav")))
+                          for key in SettingsDialog.SOUND_KEYS}
         self._settings = SettingsDialog(
             self.window.root,
             self.cfg.rest.get("threshold", 100),
             self.counter.total,
+            characters,
+            current_character,
+            sounds,
+            current_sounds,
+            self.cfg.get("audio", "overlap", default=False),
+            self.cfg.get("audio", "poolSize", default=AudioPlayer._POOL_SIZE),
             on_save=self._on_settings_save,
             on_reset=self._on_settings_reset,
+            on_preview=lambda name: self.audio.play_path(self.cfg.resolve(f"audio/{name}")),
         )
         self._settings.show()
 
-    def _on_settings_save(self, threshold: int) -> None:
+    def _on_settings_save(self, threshold: int, character: str, sounds: dict,
+                          ghost_mode: bool, pool_size: int | None) -> None:
         self.cfg.rest["threshold"] = threshold
+        self.audio.overlap = bool(ghost_mode)
+        self.cfg.audio["overlap"] = bool(ghost_mode)
+        if pool_size:
+            self.audio.set_pool_size(pool_size)
+            self.cfg.audio["poolSize"] = pool_size
+        for key, name in sounds.items():
+            if name:
+                self.cfg.audio[key] = f"audio/{name}"
+        if character:
+            self.cfg.sprite_sheet["path"] = os.path.join(assets.SPRITES_DIR, character)
+            if character != getattr(self, "_settings_prev_character", ""):
+                # whole-theme switch: point every state at the chosen image/gif
+                for anim in self.cfg.animations.values():
+                    anim["file"] = self.cfg.sprite_sheet["path"]
         self.cfg.save(self._config_path)
         self._replace_counter(KeyCounter.from_dict(self.counter.to_dict(), threshold))
+        for key, name in sounds.items():
+            if name:
+                self.audio.register(key, self.cfg.resolve(self.cfg.audio.get(key)))
+        sheet_path = self.cfg.sprite_sheet.get("path", "")
+        if sheet_path and os.path.exists(self.cfg.resolve(sheet_path)):
+            self.window.reload_frames()
+            if self._state in self.cfg.animations:
+                self._goto(self._state)
+            # repaint immediately so the window snaps to the new size now
+            self.window.show_frame(self._state, self._animator.current_frame)
+            self.window.root.update_idletasks()
 
     def _on_settings_reset(self) -> None:
         self._replace_counter(KeyCounter(self.cfg.rest.get("threshold", 100)))

@@ -29,6 +29,7 @@ def default_config() -> dict:
             "startup": "audio/startup.wav",
             "click": "audio/click.wav",
             "reminder": "audio/reminder.wav",
+            "poolSize": 6,
         },
         "rest": {
             "threshold": 100,

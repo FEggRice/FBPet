@@ -12,7 +12,7 @@ def test_load_real_config_has_animations_and_rest():
     cfg = PetConfig.load(CONFIG_PATH)
 
     assert "idle" in cfg.animations
-    assert cfg.animations["idle"]["frames"] >= 1
+    assert cfg.animations["idle"].get("frames", 1) >= 1
     assert cfg.rest["threshold"] > 0
     assert cfg.get("spriteSheet", "cellWidth") == 128
 
