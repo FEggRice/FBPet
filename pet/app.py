@@ -154,6 +154,8 @@ class PetApp:
         current_character = os.path.basename(
             self.cfg.resolve(self.cfg.sprite_sheet.get("path", "pet.png")))
         self._settings_prev_character = current_character
+        idle_anim = self.cfg.animations.get("idle", {})
+        current_idle = os.path.basename(self.cfg.resolve(idle_anim.get("file", "idel.gif")))
         sounds = assets.discover_sounds(self.cfg.base_dir)
         current_sounds = {key: os.path.basename(self.cfg.resolve(self.cfg.audio.get(key, f"audio/{key}.wav")))
                           for key in SettingsDialog.SOUND_KEYS}
@@ -163,6 +165,8 @@ class PetApp:
             self.counter.total,
             characters,
             current_character,
+            characters,  # 待机候选 = sprites 下的 gif/png，与人物同源
+            current_idle,
             sounds,
             current_sounds,
             self.cfg.get("audio", "overlap", default=False),
@@ -173,8 +177,8 @@ class PetApp:
         )
         self._settings.show()
 
-    def _on_settings_save(self, threshold: int, character: str, sounds: dict,
-                          ghost_mode: bool, pool_size: int | None) -> None:
+    def _on_settings_save(self, threshold: int, character: str, idle_file: str,
+                          sounds: dict, ghost_mode: bool, pool_size: int | None) -> None:
         self.cfg.rest["threshold"] = threshold
         self.audio.overlap = bool(ghost_mode)
         self.cfg.audio["overlap"] = bool(ghost_mode)
@@ -190,6 +194,9 @@ class PetApp:
                 # whole-theme switch: point every state at the chosen image/gif
                 for anim in self.cfg.animations.values():
                     anim["file"] = self.cfg.sprite_sheet["path"]
+        if idle_file:
+            # 只换待机：开场动画(spawn)保持不动
+            self.cfg.animations["idle"]["file"] = os.path.join(assets.SPRITES_DIR, idle_file)
         self.cfg.save(self._config_path)
         self._replace_counter(KeyCounter.from_dict(self.counter.to_dict(), threshold))
         for key, name in sounds.items():

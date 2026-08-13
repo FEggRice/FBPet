@@ -61,6 +61,8 @@ app.events.on("rest_reminder", lambda total: print(f"[reminder] {total} keys"))
 
 所有人物图放在 **`sprites/`** 文件夹里（png / gif 都行）。设置里的"桌宠人物"下拉会自动列出它们，选中保存 = 整个桌宠换成它。
 
+设置里还有"待机动画"下拉，**只换待机部分**（`animations.idle.file`），开场动画（spawn）和点击等状态不动；保存后立即生效、退出重启仍然保留。
+
 每个动画状态还能**单独指定**自己的图：在 `config.json` 的 `animations` 里给该状态加 `file`。
 
 ```json

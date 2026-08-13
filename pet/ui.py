@@ -189,7 +189,8 @@ class SettingsDialog:
     SOUND_LABELS = {"startup": "启动音", "reminder": "提醒音"}
 
     def __init__(self, root, threshold: int, total: int, characters: list[str],
-                 current_character: str, sounds: list[str], current_sounds: dict,
+                 current_character: str, idles: list[str], current_idle: str,
+                 sounds: list[str], current_sounds: dict,
                  ghost_mode: bool, pool_size: int, on_save, on_reset, on_preview) -> None:
         self.win = tk.Toplevel(root)
         self.win.title("设置")
@@ -218,6 +219,13 @@ class SettingsDialog:
         self._character.set(current_character if current_character in characters
                            else (characters[0] if characters else ""))
         self._character.grid(row=row, column=1, columnspan=2, sticky="w", pady=(14, 0))
+
+        row += 1
+        tk.Label(frame, text="待机动画：").grid(row=row, column=0, sticky="w", pady=(14, 0))
+        self._idle = ttk.Combobox(frame, values=idles, state="readonly", width=16)
+        self._idle.set(current_idle if current_idle in idles
+                       else (idles[0] if idles else ""))
+        self._idle.grid(row=row, column=1, columnspan=2, sticky="w", pady=(14, 0))
 
         row += 1
         tk.Label(frame, text="音效：").grid(row=row, column=0, columnspan=3, sticky="w", pady=(14, 0))
@@ -278,5 +286,6 @@ class SettingsDialog:
                 messagebox.showwarning("设置", "池大小必须是大于 0 的整数，留空则用默认值", parent=self.win)
                 return
         sounds = {key: cb.get() for key, cb in self._sound_cbs.items()}
-        self._on_save(value, self._character.get(), sounds, self._ghost_var.get(), pool_size)
+        self._on_save(value, self._character.get(), self._idle.get(),
+                      sounds, self._ghost_var.get(), pool_size)
         self.win.destroy()
