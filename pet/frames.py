@@ -17,6 +17,11 @@ from PIL import Image
 
 def load_frames(path: str, base_dir: str, sheet: dict, animations: dict,
                 box: tuple[int, int]) -> tuple[dict, tuple[int, int]]:
+    # 核心函数：按优先级给每个动画状态取帧。
+    # ① 动画自己的 file（GIF 取全部帧 / 单图取一帧）
+    # ② 共享精灵表是动画则全员共用；否则按各状态 row 从表里裁一行
+    # ③ 单图/无 row 的 idle 兜底为表的第一行或整图
+    # ④ 仍未取到帧的状态复用 idle 帧。返回 (帧字典, 显示尺寸)
     states = list(animations)
     frames: dict[str, list] = {}
 
@@ -74,6 +79,7 @@ def load_frames(path: str, base_dir: str, sheet: dict, animations: dict,
 
 
 def _load_image(path: str, box: tuple[int, int]) -> list:
+    # 加载一张图：若是 GIF 则取全部帧，否则单帧；每帧都等比缩放到 box 内
     img = Image.open(path)
     if getattr(img, "is_animated", False):
         return [_resize(_rgba(img, i), box) for i in range(img.n_frames)]
@@ -81,13 +87,14 @@ def _load_image(path: str, box: tuple[int, int]) -> list:
 
 
 def _rgba(img: Image.Image, index: int) -> Image.Image:
+    # 取 GIF 第 index 帧并转成 RGBA（调 seek 定位到该帧）
     img.seek(index)
     return _to_rgba(img)
 
 
 def _to_rgba(img: Image.Image) -> Image.Image:
-    """RGBA with transparent pixels' RGB zeroed, so a transparent GIF palette
-    color (often green) can't bleed into the alpha-blended edges on resize."""
+    # 转 RGBA，并把透明像素的 RGB 清零：
+    # 防止 GIF 的透明调色板色（常为绿色）在缩放时渗入边缘产生杂色
     rgba = img.copy().convert("RGBA")
     r, g, b, a = rgba.split()
     mask = a.point(lambda v: 255 if v == 0 else 0)
@@ -101,6 +108,7 @@ def _to_rgba(img: Image.Image) -> Image.Image:
 
 
 def _resize(img: Image.Image, box: tuple[int, int]) -> Image.Image:
+    # 等比缩放到 box 内（只缩小不放大），并硬化 alpha 去毛边
     bw, bh = box
     iw, ih = img.size
     scale = min(bw / iw, bh / ih, 1.0)  # fit inside box, never upscale
@@ -109,9 +117,8 @@ def _resize(img: Image.Image, box: tuple[int, int]) -> Image.Image:
 
 
 def _harden_alpha(img: Image.Image) -> Image.Image:
-    """Binary alpha. LANCZOS leaves 1-254 alpha pixels on edges that composite
-    the magenta transparentcolor key through → a purple border. Thresholding to
-    fully transparent / fully opaque kills that bleed (chroma-key look)."""
+    # 二值化 alpha：≥128 全不透明、否则全透明。
+    # LANCZOS 缩放会留下半透明边缘，叠加透明色键会渗出紫边，这步把它去掉
     if img.mode != "RGBA":
         return img
     r, g, b, a = img.split()
@@ -120,6 +127,7 @@ def _harden_alpha(img: Image.Image) -> Image.Image:
 
 
 def _is_sheet(sheet: dict, w: int, h: int) -> bool:
+    # 判断图片是否为合法精灵表：尺寸能被 cellWidth/cellHeight 整除，且格子数 >1
     cw = sheet.get("cellWidth") or 0
     ch = sheet.get("cellHeight") or 0
     if not cw or not ch or w % cw or h % ch:
@@ -128,6 +136,7 @@ def _is_sheet(sheet: dict, w: int, h: int) -> bool:
 
 
 def _display(frames: dict, box: tuple[int, int]) -> tuple[int, int]:
+    # 决定窗口显示尺寸：优先 idle 首帧，其次任一状态首帧，都没有则用 box
     if frames.get("idle") and frames["idle"]:
         return frames["idle"][0].size
     for imgs in frames.values():

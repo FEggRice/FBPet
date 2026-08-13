@@ -12,7 +12,11 @@ from .frames import load_frames
 
 
 class PetWindow:
+    # 宠物主窗口：透明无边框、置顶、显示精灵帧；支持拖动、点击、右键菜单
+
     def __init__(self, cfg, on_click, on_context) -> None:
+        # 初始化：创建透明置顶无边框 tk 窗口，加载帧定尺寸，放屏幕右下角，
+        # 绑定鼠标事件，建右键菜单
         self.cfg = cfg
         self.on_click = on_click
         self.on_context = on_context
@@ -51,31 +55,37 @@ class PetWindow:
     # -- view ----------------------------------------------------------------
 
     def show_frame(self, state: str, index: int) -> None:
+        # 在窗口上显示某状态的某一帧（下标合法时更新图片）
         imgs = self.frames.get(state)
         if imgs and index < len(imgs):
             self._label.config(image=imgs[index])
 
     def reload_frames(self) -> None:
-        """Re-read the sprite sheet / image and resize in place (for settings)."""
+        # 重新读精灵表/图片并原位调整窗口尺寸（设置保存后调用）
         self.frames, display = self._load_frames()
         x, y = self.root.winfo_x(), self.root.winfo_y()
         w, h = display
         self.root.geometry(f"{w}x{h}+{x}+{y}")
 
     def hide(self) -> None:
+        # 隐藏窗口（隐藏到托盘时用）
         self.root.withdraw()
 
     def show(self) -> None:
+        # 重新显示窗口（从托盘恢复时用）
         self.root.deiconify()
 
     def position(self) -> tuple[int, int, int, int]:
+        # 返回窗口几何：x, y, 宽, 高（供气泡定位用）
         return (self.root.winfo_x(), self.root.winfo_y(),
                 self.root.winfo_width(), self.root.winfo_height())
 
     def frame_count(self, state: str) -> int:
+        # 返回某状态的帧数（用于建 animator）
         return len(self.frames.get(state) or [])
 
     def _load_frames(self) -> tuple[dict[str, list], tuple[int, int]]:
+        # 调 load_frames 解析各状态帧，包装成 ImageTk.PhotoImage，返回 (帧字典, 尺寸)
         sheet = self.cfg.sprite_sheet
         path = self.cfg.resolve(sheet.get("path", "pet.png"))
         box = (
@@ -88,10 +98,12 @@ class PetWindow:
     # -- input ---------------------------------------------------------------
 
     def _on_down(self, e) -> None:
+        # 鼠标按下：记录拖拽起点、清除移动标记
         self._drag_start = (e.x_root, e.y_root)
         self._moved = False
 
     def _on_move(self, e) -> None:
+        # 鼠标拖动：超过 5px 判定为拖动，随鼠标移动窗口位置
         if not self._drag_start:
             return
         dx = e.x_root - self._drag_start[0]
@@ -103,11 +115,13 @@ class PetWindow:
         self._drag_start = (e.x_root, e.y_root)
 
     def _on_up(self, e) -> None:
+        # 鼠标释放：若没有拖动则视为一次点击，触发 on_click
         if self._drag_start and not self._moved:
             self.on_click()
         self._drag_start = None
 
     def _on_right(self, e) -> None:
+        # 右键：弹出上下文菜单
         try:
             self._context.tk_popup(e.x_root, e.y_root)
         finally:
@@ -121,6 +135,7 @@ class BubbleWindow:
     _TITLE = "_fb_pet_bubble_"
 
     def __init__(self, root, key: str) -> None:
+        # 初始化：创建透明置顶无边框 Toplevel，带文本标签，默认隐藏，并设置点击穿透
         self.root = root
         self._win = tk.Toplevel(root)
         self._win.title(self._TITLE)
@@ -147,6 +162,7 @@ class BubbleWindow:
         self._make_click_through()
 
     def show(self, text: str, pet_rect) -> None:
+        # 在宠物旁边显示气泡文字：先算自身尺寸再定位（自动避让屏幕左/右边缘）
         self._label.config(text=text)
         self._win.update_idletasks()
         w = self._label.winfo_reqwidth()
@@ -163,9 +179,11 @@ class BubbleWindow:
         self._win.deiconify()
 
     def hide(self) -> None:
+        # 隐藏气泡
         self._win.withdraw()
 
     def _make_click_through(self) -> None:
+        # 通过窗口标题 FindWindow 拿 HWND，加 WS_EX_TRANSPARENT 样式让点击穿透
         try:
             user32 = ctypes.windll.user32
             hwnd = user32.FindWindowW(None, self._TITLE)
@@ -192,6 +210,9 @@ class SettingsDialog:
                  current_character: str, idles: list[str], current_idle: str,
                  sounds: list[str], current_sounds: dict,
                  ghost_mode: bool, pool_size: int, on_save, on_reset, on_preview) -> None:
+        # 初始化设置窗口：阈值输入、桌宠人物下拉、待机动画下拉、
+        # 音效下拉+试听、鬼畜勾选、点击音池输入、重置/保存按钮。
+        # 各下拉预填当前配置值，操作都通过回调交给 app 层处理
         self.win = tk.Toplevel(root)
         self.win.title("设置")
         self.win.resizable(False, False)
@@ -255,19 +276,24 @@ class SettingsDialog:
         tk.Button(frame, text="保存", command=self._save).grid(row=row, column=1, columnspan=2, sticky="e", pady=(14, 0))
 
     def show(self) -> None:
+        # 显示并置顶设置窗口
         self.win.deiconify()
         self.win.lift()
 
     def _preview(self, cb: ttk.Combobox) -> None:
+        # 试听：调用 on_preview 播放所选音效文件
         name = cb.get()
         if name:
             self._on_preview(name)
 
     def _reset(self) -> None:
+        # 重置按键计数：调用 on_reset 并把界面上的累计数字清零
         self._on_reset()
         self._total_label.config(text="累计按键次数：0")
 
     def _save(self) -> None:
+        # 保存设置：校验阈值与池大小（必须 >0 或留空），
+        # 收集所有下拉/输入的值，调用 on_save 后关闭窗口
         try:
             value = int(self._entry.get().strip())
         except ValueError:

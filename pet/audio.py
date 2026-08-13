@@ -13,9 +13,13 @@ _AUDIO_EXTS = (".mp3", ".wav")
 
 
 class AudioPlayer:
+    # 音效播放器：普通模式用 Windows MCI（新音效切掉上一个）；
+    # 鬼畜模式开启后用 pygame.mixer 真多声道重叠播放
+
     _POOL_SIZE = 6  # 鬼畜模式：最多同时重叠的音频数
 
     def __init__(self) -> None:
+        # 初始化：空注册表、鬼畜开关、声道池大小、pygame 懒加载状态与 Sound 缓存
         self._files: dict[str, str | list[str]] = {}
         self.overlap = False  # 鬼畜模式开关
         self.pool_size = self._POOL_SIZE  # 鬼畜重叠声道数，设置里可改
@@ -23,6 +27,7 @@ class AudioPlayer:
         self._sounds: dict[str, object] = {}  # pygame Sound 缓存
 
     def set_pool_size(self, n: int) -> None:
+        # 设置鬼畜声道池大小（最小 1）；pygame 已初始化就同步修改声道数
         self.pool_size = max(1, int(n))
         if self._pygame:  # 已初始化就立刻改声道数
             try:
@@ -31,11 +36,12 @@ class AudioPlayer:
                 pass
 
     def register(self, key: str, path: str) -> None:
+        # 把单个音频文件注册到某个键名下（文件不存在则忽略）
         if os.path.exists(path):
             self._files[key] = path
 
     def register_folder(self, key: str, folder: str) -> None:
-        """Register a folder; play() then picks a random audio file from it."""
+        # 把整个文件夹注册到键名下，play() 时从其中随机选一个播放
         if not os.path.isdir(folder):
             return
         files = sorted(os.path.join(folder, f) for f in os.listdir(folder)
@@ -44,6 +50,7 @@ class AudioPlayer:
             self._files[key] = files
 
     def play(self, key: str) -> None:
+        # 按键名播放音频；若该键对应一个文件夹列表则随机挑一个
         entry = self._files.get(key)
         if not entry:
             return
@@ -52,13 +59,13 @@ class AudioPlayer:
         self._play_file(entry)
 
     def play_path(self, path: str) -> None:
+        # 直接播放指定路径的文件（如设置里的"试听"）
         if os.path.exists(path):
             self._play_file(path)
 
     def _play_file(self, path: str) -> None:
-        """Play a file asynchronously. Overlap (鬼畜) mode uses pygame.mixer, which
-        can genuinely play many streams at once; normal mode cuts the previous
-        sound via a single MCI instance (MCI mpegvideo can't overlap in audio)."""
+        # 播放单个文件：鬼畜模式走 pygame 多声道；否则 MCI 先 close 旧音再播新的
+        # （普通模式单声道，新音效会切掉上一个）
         if self.overlap and self._ensure_pygame():
             self._play_overlap(path)
             return
@@ -69,8 +76,7 @@ class AudioPlayer:
         _mci("play _snd", None, 0, None)
 
     def _ensure_pygame(self):
-        """Lazily init pygame.mixer (channel count = _POOL_SIZE). Returns the
-        module, or False if the audio device is unavailable."""
+        # 懒初始化 pygame.mixer（声道数 = 池大小）；音频设备不可用时返回 False
         if self._pygame is None:
             try:
                 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -83,6 +89,7 @@ class AudioPlayer:
         return self._pygame
 
     def _play_overlap(self, path: str) -> None:
+        # pygame 重叠播放：缓存 Sound 对象；find_channel(force=True) 池满时回收最老的声道
         pygame = self._pygame
         snd = self._sounds.get(path)
         if snd is None:

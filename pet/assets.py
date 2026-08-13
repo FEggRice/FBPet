@@ -15,8 +15,8 @@ SPRITES_DIR = "sprites"
 
 
 def discover_characters(base_dir: str) -> list[str]:
-    """Character choices: image files in <base_dir>/sprites (or base_dir if the
-    folder doesn't exist yet)."""
+    # 扫描 <base_dir>/sprites 目录（目录不存在则扫 base_dir），返回所有 png/gif 文件名，
+    # 即设置里「桌宠人物」的可选项
     folder = os.path.join(base_dir, SPRITES_DIR)
     if not os.path.isdir(folder):
         folder = base_dir
@@ -24,7 +24,7 @@ def discover_characters(base_dir: str) -> list[str]:
 
 
 def discover_sounds(base_dir: str) -> list[str]:
-    """Sound choices: wav files in <base_dir>/audio."""
+    # 扫描 <base_dir>/audio 目录，返回所有 wav 文件名，即设置里音效的可选项
     audio_dir = os.path.join(base_dir, "audio")
     if not os.path.isdir(audio_dir):
         return []
@@ -32,6 +32,8 @@ def discover_sounds(base_dir: str) -> list[str]:
 
 
 def ensure_assets(cfg, force: bool = False) -> None:
+    # 保证资源存在：精灵表 PNG 缺失则程序化生成；启动/点击/提醒三个 wav 缺失则生成。
+    # force=True 时无条件重新生成
     sheet = cfg.sprite_sheet
     sheet_path = cfg.resolve(sheet.get("path", "pet.png"))
     if force or not os.path.exists(sheet_path):
@@ -46,6 +48,8 @@ def ensure_assets(cfg, force: bool = False) -> None:
 
 
 def _generate_sprite_sheet(path: str, sheet: dict) -> None:
+    # 用 Pillow 程序化画一张 cols×rows 的精灵表：每个格子一个卡通圆脸，
+    # 三行分别用不同颜色代表 idle / spawn / clicked
     cols = sheet.get("cols", 8)
     rows = sheet.get("rows", 3)
     cw = sheet.get("cellWidth", 128)
@@ -64,6 +68,8 @@ def _generate_sprite_sheet(path: str, sheet: dict) -> None:
 
 
 def _draw_cell(d: ImageDraw.ImageDraw, x: int, y: int, cw: int, ch: int, body, row: int, t: float) -> None:
+    # 在精灵表 (x,y) 处画一个格子的脸：圆脸 + 眼睛（idle 行末尾会眨眼）+ 嘴（row2 画惊讶"o"）。
+    # row==1（spawn 行）时脸随 t 从小到大，模拟"长大入场"的效果
     scale = 0.35 + 0.65 * t if row == 1 else 0.92  # spawn row grows in
     cx = x + cw / 2.0
     cy = y + ch / 2.0 + ch * 0.04
@@ -94,6 +100,7 @@ def _draw_cell(d: ImageDraw.ImageDraw, x: int, y: int, cw: int, ch: int, body, r
 
 
 def _write_wav(path: str, freq: float, seconds: float) -> None:
+    # 用标准库写一个指定频率/时长的正弦波 wav，带淡入淡出包络防爆音
     import array
 
     sample_rate = 44100
