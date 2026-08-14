@@ -108,10 +108,10 @@ def _to_rgba(img: Image.Image) -> Image.Image:
 
 
 def _resize(img: Image.Image, box: tuple[int, int]) -> Image.Image:
-    # 等比缩放到 box 内（只缩小不放大），并硬化 alpha 去毛边
+    # 等比缩放到 box 内（小图也放大），并硬化 alpha 去毛边
     bw, bh = box
     iw, ih = img.size
-    scale = min(bw / iw, bh / ih, 1.0)  # fit inside box, never upscale
+    scale = min(bw / iw, bh / ih)  # fit inside box; upscale small pets for uniform size
     resized = img.resize((max(1, int(iw * scale)), max(1, int(ih * scale))), Image.LANCZOS)
     return _harden_alpha(resized)
 

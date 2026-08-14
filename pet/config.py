@@ -13,7 +13,7 @@ def default_config() -> dict:
     # 生成默认配置字典：窗口尺寸/透明色、精灵表规格、四组动画参数、
     # 音效、休息阈值与提示语、计数文件名
     return {
-        "window": {"width": 128, "height": 128, "transparentColor": "#ff00ff"},
+        "window": {"width": 128, "height": 128, "transparentColor": "#ff00ff", "scale": 1.0},
         "spriteSheet": {
             "path": "pet.png",
             "cellWidth": 128,

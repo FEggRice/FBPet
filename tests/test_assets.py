@@ -1,34 +1,34 @@
 import os
 import tempfile
 
-from pet.assets import discover_characters, discover_sounds
+from pet.assets import discover_sprites, discover_sounds
 
 
 def _touch(path):
     open(path, "w").close()
 
 
-def test_discover_characters_lists_png_and_gif_only():
+def test_discover_sprites_lists_png_and_gif_only():
     with tempfile.TemporaryDirectory() as d:
         for f in ("b.png", "a.gif", "c.jpg", "notes.txt"):
             _touch(os.path.join(d, f))
 
-        assert discover_characters(d) == ["a.gif", "b.png"]
+        assert discover_sprites(d) == ["a.gif", "b.png"]
 
 
-def test_discover_characters_empty_dir():
+def test_discover_sprites_empty_dir():
     with tempfile.TemporaryDirectory() as d:
-        assert discover_characters(d) == []
+        assert discover_sprites(d) == []
 
 
-def test_discover_characters_prefers_sprites_folder():
+def test_discover_sprites_prefers_sprites_folder():
     with tempfile.TemporaryDirectory() as d:
         os.makedirs(os.path.join(d, "sprites"))
         _touch(os.path.join(d, "root.png"))
         _touch(os.path.join(d, "sprites", "b.png"))
         _touch(os.path.join(d, "sprites", "a.gif"))
 
-        assert discover_characters(d) == ["a.gif", "b.png"]
+        assert discover_sprites(d) == ["a.gif", "b.png"]
 
 
 def test_discover_sounds_lists_wavs_in_audio_dir_only():

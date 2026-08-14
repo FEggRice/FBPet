@@ -10,17 +10,17 @@ from PIL import Image, ImageDraw
 
 _KEY = (255, 0, 255)  # matches default transparentColor in config; never used in sprites
 
-CHARACTER_EXTS = (".png", ".gif")
+SPRITE_EXTS = (".png", ".gif")
 SPRITES_DIR = "sprites"
 
 
-def discover_characters(base_dir: str) -> list[str]:
+def discover_sprites(base_dir: str) -> list[str]:
     # 扫描 <base_dir>/sprites 目录（目录不存在则扫 base_dir），返回所有 png/gif 文件名，
-    # 即设置里「桌宠人物」的可选项
+    # 即设置里「待机动画」的可选项
     folder = os.path.join(base_dir, SPRITES_DIR)
     if not os.path.isdir(folder):
         folder = base_dir
-    return sorted(f for f in os.listdir(folder) if f.lower().endswith(CHARACTER_EXTS))
+    return sorted(f for f in os.listdir(folder) if f.lower().endswith(SPRITE_EXTS))
 
 
 def discover_sounds(base_dir: str) -> list[str]:

@@ -2,7 +2,8 @@
   "window": {
     "width": 256,
     "height": 256,
-    "transparentColor": "#ff00ff"
+    "transparentColor": "#ff00ff",
+    "scale": 1.0
   },
   "spriteSheet": {
     "path": "sprites\\pet.png",
@@ -13,7 +14,7 @@
   },
   "animations": {
     "idle": {
-      "file": "sprites/idel.gif",
+      "file": "sprites\\123.gif",
       "fps": 10,
       "loop": true
     },
@@ -34,7 +35,7 @@
   "audio": {
     "startup": "audio/startup.wav",
     "reminder": "audio/reminder.wav",
-    "overlap": false,
+    "overlap": true,
     "poolSize": 6
   },
   "rest": {

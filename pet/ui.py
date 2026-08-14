@@ -85,12 +85,14 @@ class PetWindow:
         return len(self.frames.get(state) or [])
 
     def _load_frames(self) -> tuple[dict[str, list], tuple[int, int]]:
-        # 调 load_frames 解析各状态帧，包装成 ImageTk.PhotoImage，返回 (帧字典, 尺寸)
+        # 调 load_frames 解析各状态帧，包装成 ImageTk.PhotoImage，返回 (帧字典, 尺寸)。
+        # box = 窗口基准尺寸 × 用户缩放倍数（scale）
         sheet = self.cfg.sprite_sheet
         path = self.cfg.resolve(sheet.get("path", "pet.png"))
+        scale = self.cfg.get("window", "scale", default=1.0)
         box = (
-            self.cfg.get("window", "width", default=128),
-            self.cfg.get("window", "height", default=128),
+            int(self.cfg.get("window", "width", default=128) * scale),
+            int(self.cfg.get("window", "height", default=128) * scale),
         )
         frames, size = load_frames(path, self.cfg.base_dir, sheet, self.cfg.animations, box)
         return {name: [ImageTk.PhotoImage(im, master=self.root) for im in imgs] for name, imgs in frames.items()}, size
@@ -201,18 +203,17 @@ class BubbleWindow:
 
 
 class SettingsDialog:
-    """Threshold + counter reset, plus character and sound-effect pickers."""
+    """Threshold + counter reset, plus idle-animation and sound-effect pickers."""
 
     SOUND_KEYS = ("startup", "reminder")
     SOUND_LABELS = {"startup": "启动音", "reminder": "提醒音"}
 
-    def __init__(self, root, threshold: int, total: int, characters: list[str],
-                 current_character: str, idles: list[str], current_idle: str,
+    def __init__(self, root, threshold: int, total: int, idles: list[str], current_idle: str,
                  sounds: list[str], current_sounds: dict,
-                 ghost_mode: bool, pool_size: int, on_save, on_reset, on_preview) -> None:
-        # 初始化设置窗口：阈值输入、桌宠人物下拉、待机动画下拉、
+                 ghost_mode: bool, pool_size: int, scale: float, on_save, on_reset, on_preview) -> None:
+        # 初始化设置窗口：阈值输入、待机动画下拉、尺寸缩放、
         # 音效下拉+试听、鬼畜勾选、点击音池输入、重置/保存按钮。
-        # 各下拉预填当前配置值，操作都通过回调交给 app 层处理
+        # 各下拉/输入预填当前配置值，操作都通过回调交给 app 层处理
         self.win = tk.Toplevel(root)
         self.win.title("设置")
         self.win.resizable(False, False)
@@ -235,18 +236,17 @@ class SettingsDialog:
         self._entry.grid(row=1, column=1, sticky="w")
 
         row = 2
-        tk.Label(frame, text="桌宠人物：").grid(row=row, column=0, sticky="w", pady=(14, 0))
-        self._character = ttk.Combobox(frame, values=characters, state="readonly", width=16)
-        self._character.set(current_character if current_character in characters
-                           else (characters[0] if characters else ""))
-        self._character.grid(row=row, column=1, columnspan=2, sticky="w", pady=(14, 0))
-
-        row += 1
         tk.Label(frame, text="待机动画：").grid(row=row, column=0, sticky="w", pady=(14, 0))
         self._idle = ttk.Combobox(frame, values=idles, state="readonly", width=16)
         self._idle.set(current_idle if current_idle in idles
                        else (idles[0] if idles else ""))
         self._idle.grid(row=row, column=1, columnspan=2, sticky="w", pady=(14, 0))
+
+        row += 1
+        tk.Label(frame, text="尺寸缩放(倍)：").grid(row=row, column=0, sticky="w", pady=(14, 0))
+        self._scale_entry = tk.Entry(frame, width=8)
+        self._scale_entry.insert(0, str(scale))
+        self._scale_entry.grid(row=row, column=1, columnspan=2, sticky="w", pady=(14, 0))
 
         row += 1
         tk.Label(frame, text="音效：").grid(row=row, column=0, columnspan=3, sticky="w", pady=(14, 0))
@@ -311,7 +311,15 @@ class SettingsDialog:
             if pool_size <= 0:
                 messagebox.showwarning("设置", "池大小必须是大于 0 的整数，留空则用默认值", parent=self.win)
                 return
+        scale_text = self._scale_entry.get().strip()
+        try:
+            scale = float(scale_text)
+        except ValueError:
+            scale = 0.0
+        if scale <= 0 or scale > 5:
+            messagebox.showwarning("设置", "尺寸缩放必须是大于 0、不超过 5 的数字（如 1.0）", parent=self.win)
+            return
         sounds = {key: cb.get() for key, cb in self._sound_cbs.items()}
-        self._on_save(value, self._character.get(), self._idle.get(),
-                      sounds, self._ghost_var.get(), pool_size)
+        self._on_save(value, self._idle.get(),
+                      sounds, self._ghost_var.get(), pool_size, scale)
         self.win.destroy()

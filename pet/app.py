@@ -165,17 +165,14 @@ class PetApp:
         self.window.show()
 
     def _open_settings(self) -> None:
-        # 打开设置窗口：已打开则置顶返回；收集候选人物/待机动画/音效与当前值，
-        # 记录当前人物到 _settings_prev_character，建 SettingsDialog 并显示
+        # 打开设置窗口：已打开则置顶返回；收集候选待机动画/音效与当前值，
+        # 建 SettingsDialog 并显示
         if self._settings and self._settings.win.winfo_exists():
             self._settings.win.lift()
             return
-        characters = assets.discover_characters(self.cfg.base_dir)
-        current_character = os.path.basename(
-            self.cfg.resolve(self.cfg.sprite_sheet.get("path", "pet.png")))
-        self._settings_prev_character = current_character
         idle_anim = self.cfg.animations.get("idle", {})
         current_idle = os.path.basename(self.cfg.resolve(idle_anim.get("file", "idel.gif")))
+        idles = assets.discover_sprites(self.cfg.base_dir)
         sounds = assets.discover_sounds(self.cfg.base_dir)
         current_sounds = {key: os.path.basename(self.cfg.resolve(self.cfg.audio.get(key, f"audio/{key}.wav")))
                           for key in SettingsDialog.SOUND_KEYS}
@@ -183,26 +180,26 @@ class PetApp:
             self.window.root,
             self.cfg.rest.get("threshold", 100),
             self.counter.total,
-            characters,
-            current_character,
-            characters,  # 待机候选 = sprites 下的 gif/png，与人物同源
+            idles,
             current_idle,
             sounds,
             current_sounds,
             self.cfg.get("audio", "overlap", default=False),
             self.cfg.get("audio", "poolSize", default=AudioPlayer._POOL_SIZE),
+            self.cfg.get("window", "scale", default=1.0),
             on_save=self._on_settings_save,
             on_reset=self._on_settings_reset,
             on_preview=lambda name: self.audio.play_path(self.cfg.resolve(f"audio/{name}")),
         )
         self._settings.show()
 
-    def _on_settings_save(self, threshold: int, character: str, idle_file: str,
-                          sounds: dict, ghost_mode: bool, pool_size: int | None) -> None:
-        # 保存设置：更新阈值/鬼畜/池/音效；「桌宠人物」有改动就把所有动画 file
-        # 覆盖成该图（换角色）；「待机动画」只改 idle 不动 spawn；
+    def _on_settings_save(self, threshold: int, idle_file: str,
+                          sounds: dict, ghost_mode: bool, pool_size: int | None,
+                          scale: float) -> None:
+        # 保存设置：更新阈值/缩放/鬼畜/池/音效；「待机动画」只改 idle 不动 spawn；
         # 写回 config、重载帧并立即重绘窗口
         self.cfg.rest["threshold"] = threshold
+        self.cfg.data.setdefault("window", {})["scale"] = scale
         self.audio.overlap = bool(ghost_mode)
         self.cfg.audio["overlap"] = bool(ghost_mode)
         if pool_size:
@@ -211,12 +208,6 @@ class PetApp:
         for key, name in sounds.items():
             if name:
                 self.cfg.audio[key] = f"audio/{name}"
-        if character:
-            self.cfg.sprite_sheet["path"] = os.path.join(assets.SPRITES_DIR, character)
-            if character != getattr(self, "_settings_prev_character", ""):
-                # whole-theme switch: point every state at the chosen image/gif
-                for anim in self.cfg.animations.values():
-                    anim["file"] = self.cfg.sprite_sheet["path"]
         if idle_file:
             # 只换待机：开场动画(spawn)保持不动
             self.cfg.animations["idle"]["file"] = os.path.join(assets.SPRITES_DIR, idle_file)

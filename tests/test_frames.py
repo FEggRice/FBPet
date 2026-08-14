@@ -19,14 +19,14 @@ def _gif(path, colors=((255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255))):
     return path
 
 
-def test_single_static_image_gives_one_frame_per_state_at_natural_size():
+def test_small_image_is_upscaled_to_fit_box():
     with tempfile.TemporaryDirectory() as d:
         path = _save(Image.new("RGBA", (200, 100), (255, 0, 0, 255)), os.path.join(d, "a.png"))
         frames, size = load_frames(path, d, {}, ANIMS, box=(400, 400))
 
     assert len(frames["idle"]) == 1
     assert len(frames["clicked"]) == 1
-    assert size == (200, 100)  # smaller than box → never upscale
+    assert size == (400, 200)  # smaller than box → upscaled to fit (uniform size)
     assert frames["idle"][0].mode == "RGBA"
 
 
@@ -45,7 +45,7 @@ def test_animated_sheet_gives_same_frames_for_every_state():
 
     assert len(frames["idle"]) == 3
     assert len(frames["clicked"]) == 3
-    assert size == (60, 60)
+    assert size == (128, 128)  # 60×60 gif upscaled to the 128 box
 
 
 def test_sprite_sheet_crops_per_state_row():
@@ -73,8 +73,8 @@ def test_per_state_file_gif_and_single_image():
 
     assert len(frames["idle"]) == 3
     assert len(frames["spawn"]) == 1
-    assert frames["idle"][0].size == (60, 60)
-    assert size == (60, 60)  # display follows the idle state
+    assert frames["idle"][0].size == (128, 128)
+    assert size == (128, 128)  # display follows the idle state
 
 
 def test_states_without_file_reuse_idle_frames():
@@ -84,7 +84,7 @@ def test_states_without_file_reuse_idle_frames():
         frames, _ = load_frames(os.path.join(d, "missing.png"), d, {}, animations, box=(128, 128))
 
     assert len(frames["clicked"]) == 3
-    assert frames["clicked"][0].size == (60, 60)
+    assert frames["clicked"][0].size == (128, 128)
 
 
 def test_resized_edges_have_no_semi_transparent_pixels():
