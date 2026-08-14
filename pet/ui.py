@@ -3,12 +3,14 @@ message), SettingsDialog. Pure view layer — no business logic, all effects via
 from __future__ import annotations
 
 import ctypes
+import math
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 from PIL import ImageTk
 
 from .frames import load_frames
+from .radial import button_centers, hit_test, wheel_half_size
 
 
 class PetWindow:
@@ -46,11 +48,17 @@ class PetWindow:
 
         self._drag_start = None
         self._moved = False
-        self._context = tk.Menu(self.root, tearoff=0)
-        self._context.add_command(label="隐藏到托盘", command=lambda: self.on_context("hide"))
-        self._context.add_command(label="设置", command=lambda: self.on_context("settings"))
-        self._context.add_separator()
-        self._context.add_command(label="退出", command=lambda: self.on_context("quit"))
+        # 环形转轮右键菜单：设置 / 隐藏到托盘 / 退出（顺序即圆周顺时针排布，从正上方开始）
+        self._radial = RadialMenu(
+            self.root,
+            self.key,
+            actions=[
+                ("设置", "⚙", "settings"),
+                ("隐藏到托盘", "▬", "hide"),
+                ("退出", "✕", "quit"),
+            ],
+            on_action=self.on_context,
+        )
 
     # -- view ----------------------------------------------------------------
 
@@ -123,11 +131,8 @@ class PetWindow:
         self._drag_start = None
 
     def _on_right(self, e) -> None:
-        # 右键：弹出上下文菜单
-        try:
-            self._context.tk_popup(e.x_root, e.y_root)
-        finally:
-            self._context.grab_release()
+        # 右键：在鼠标处弹出环形转轮菜单
+        self._radial.show(e.x_root, e.y_root)
 
 
 class BubbleWindow:
@@ -200,6 +205,214 @@ class BubbleWindow:
                 user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT)
         except Exception:
             pass
+
+
+def _ease_out_back(t: float) -> float:
+    # 缓出带回弹：t∈[0,1] → 越过 1 再落回（产生弹簧挤压的过冲）
+    c1, c3 = 1.70158, 2.70158
+    return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2
+
+
+class RadialMenu:
+    # 右键环形转轮菜单：透明置顶无边框 Toplevel + Canvas，游戏感动效。
+    # 入场：按钮从圆心逐个带弹跳出弹到圆周，同时整体旋转展开（弹簧）；
+    # 悬停：目标按钮弹性放大、向外推出、亮起霓虹辉光，中文标签此时才浮现；
+    # 常态只显示图标+暗色环。左键触发动作，点空白/右键/Escape 关闭
+
+    ICON_FONT = ("Segoe UI Symbol", 26)
+    LABEL_FONT = ("Microsoft YaHei", 11)
+    RING_RADIUS = 88       # 圆心到按钮中心的距离
+    BUTTON_RADIUS = 34     # 普通按钮半径
+    HOVER_SCALE = 1.35     # 悬停放大倍数
+    HOVER_PUSH = 35        # 悬停沿半径向外推出的系数（乘过冲量）
+    HIT_RADIUS = 40        # 命中判定半径
+    MARGIN = 6
+    LABEL_PAD = 22         # 悬停按钮下方给标签留的空间
+    SPIN_START = -30.0     # 入场旋转起点（度），弹簧回落 0 → 展开感
+    FRAMES = 16            # 单个按钮入场帧数
+    STAGGER = 5            # 相邻按钮入场间隔帧
+    _TICK_MS = 33          # 动画帧率 ≈30fps
+
+    # 霓虹配色
+    BUTTON_BG = "#15181e"
+    OUTLINE_NORMAL = "#334155"
+    OUTLINE_HOVER = "#9ff0ff"
+    GLOW_FAR = "#123a4d"
+    GLOW_NEAR = "#1f6f94"
+    ICON_NORMAL = "#94a3b8"
+    ICON_HOVER = "#ffffff"
+    LABEL_FILL = "#e6f7ff"
+    RING_FILL = "#223147"
+
+    def __init__(self, root, key: str, actions, on_action) -> None:
+        # 初始化：actions 形如 [(标签, 图标, action), ...]，依次对应圆周各角度；
+        # 建透明置顶无边框 Toplevel 和 Canvas，绑定移动/左键/右键/Escape，默认隐藏
+        self._root = root
+        self._on_action = on_action
+        self._actions = actions
+        self._hovered: int | None = None
+
+        half = wheel_half_size(self.RING_RADIUS, self.BUTTON_RADIUS * self.HOVER_SCALE
+                               + self.LABEL_PAD, self.MARGIN)
+        self._size = int(half * 2)
+        self._center = (half, half)
+        n = len(actions)
+        self._s = [1.0] * n      # 每按钮当前缩放（弹簧位置）
+        self._sv = [0.0] * n     # 每按钮缩放速度
+        self._frame = 0          # 入场动画帧计数
+        self._rot = 0.0          # 整体旋转偏移（弹簧位置）
+        self._rv = 0.0           # 旋转速度
+
+        self._win = tk.Toplevel(root)
+        self._win.overrideredirect(True)
+        self._win.attributes("-topmost", True)
+        try:
+            self._win.attributes("-transparentcolor", key)
+        except tk.TclError:
+            pass
+        self._win.configure(bg=key)
+        self._win.geometry(f"{self._size}x{self._size}")
+
+        self._canvas = tk.Canvas(self._win, width=self._size, height=self._size,
+                                 bg=key, highlightthickness=0)
+        self._canvas.pack()
+        self._canvas.bind("<Motion>", self._on_motion)
+        self._canvas.bind("<Button-1>", self._on_click)
+        self._canvas.bind("<Button-3>", lambda e: self.hide())
+        self._canvas.bind("<Escape>", lambda e: self.hide())
+        self._win.withdraw()
+
+    # -- 公共接口 -------------------------------------------------------------
+
+    def show(self, x_root: int, y_root: int) -> None:
+        # 把轮盘中心对准鼠标（夹在屏幕内），重置动画状态、显示并抓取鼠标，启动动画循环
+        x = x_root - int(self._center[0])
+        y = y_root - int(self._center[1])
+        sw = self._root.winfo_screenwidth()
+        sh = self._root.winfo_screenheight()
+        x = max(0, min(x, sw - self._size))
+        y = max(0, min(y, sh - self._size))
+        self._win.geometry(f"+{x}+{y}")
+        self._hovered = None
+        self._frame = 0
+        self._rot, self._rv = self.SPIN_START, 0.0
+        for i in range(len(self._actions)):
+            self._s[i], self._sv[i] = 1.0, 0.0
+        self._win.deiconify()
+        self._win.lift()
+        self._win.grab_set()
+        self._canvas.focus_set()
+        self._tick()
+
+    def hide(self) -> None:
+        # 释放鼠标抓取并隐藏转轮（容错处理）
+        try:
+            self._win.grab_release()
+        except tk.TclError:
+            pass
+        self._hovered = None
+        self._win.withdraw()
+
+    # -- 动画循环 -------------------------------------------------------------
+
+    def _tick(self) -> None:
+        # 动画心跳：推进入场帧、旋转弹簧、各按钮悬停缩放弹簧，重绘；窗口可见则续跑
+        self._frame += 1
+        self._rot, self._rv = self._spring(self._rot, self._rv, 0.0)
+        for i in range(len(self._actions)):
+            target = self.HOVER_SCALE if i == self._hovered else 1.0
+            self._s[i], self._sv[i] = self._spring(self._s[i], self._sv[i], target)
+        self._redraw()
+        if self._win.state() == "normal":
+            self._win.after(self._TICK_MS, self._tick)
+
+    @staticmethod
+    def _spring(pos: float, vel: float, target: float) -> tuple[float, float]:
+        # 欠阻尼弹簧：过冲一次后回落，产生弹性手感（每帧 33ms 的时间步）
+        accel = (target - pos) * 0.16
+        vel = vel * 0.70 + accel
+        return pos + vel, vel
+
+    # -- 布局 -----------------------------------------------------------------
+
+    def _base_centers(self) -> list[tuple[float, float]]:
+        # 完全展开后各按钮圆心（第一个在正上方，顺时针）
+        return button_centers(len(self._actions), self._center, self.RING_RADIUS)
+
+    def _current_centers(self) -> list[tuple[float, float]]:
+        # 当前帧各按钮圆心：入场阶段从圆心沿各自方向弹出（ease_out_back 带回弹），
+        # 角度叠加残余旋转量，实现「逐个弹出 + 整体旋转展开」；悬停时沿半径外推
+        cx = cy = self._center[0]
+        n = len(self._actions)
+        step = 360.0 / n
+        out = []
+        for i in range(n):
+            t = max(0.0, min(1.0, (self._frame - i * self.STAGGER) / self.FRAMES))
+            r = _ease_out_back(t) * self.RING_RADIUS
+            ang = math.radians(90 + i * step + self._rot * (1 - t))
+            bx = cx + r * math.cos(ang)
+            by = cy - r * math.sin(ang)
+            if self._s[i] > 1.0:
+                dx, dy = bx - cx, by - cy
+                d = math.hypot(dx, dy) or 1.0
+                push = (self._s[i] - 1.0) * self.HOVER_PUSH
+                bx += dx / d * push
+                by += dy / d * push
+            out.append((bx, by))
+        return out
+
+    # -- 输入 -----------------------------------------------------------------
+
+    def _on_motion(self, e) -> None:
+        # 鼠标移动：按当前帧按钮位置命中测试，悬停目标变化由弹簧动画平滑过渡
+        idx = hit_test(self._current_centers(), e.x, e.y, self.HIT_RADIUS)
+        if idx != self._hovered:
+            self._hovered = idx
+
+    def _on_click(self, e) -> None:
+        # 左键：命中按钮则先关闭转轮（释放 grab）再执行动作，否则仅关闭
+        idx = hit_test(self._current_centers(), e.x, e.y, self.HIT_RADIUS)
+        if idx is not None:
+            action = self._actions[idx][2]
+            self.hide()
+            self._on_action(action)
+        else:
+            self.hide()
+
+    # -- 绘制 -----------------------------------------------------------------
+
+    def _redraw(self) -> None:
+        # 全量重绘：外圈淡环 → 每按钮（辉光、暗底圆、图标）→ 悬停按钮出中文标签
+        c = self._canvas
+        c.delete("all")
+        cx = cy = self._center[0]
+
+        c.create_oval(cx - self.RING_RADIUS, cy - self.RING_RADIUS,
+                      cx + self.RING_RADIUS, cy + self.RING_RADIUS,
+                      outline=self.RING_FILL, width=1)
+
+        centers = self._current_centers()
+        for i, (label, icon, _action) in enumerate(self._actions):
+            bx, by = centers[i]
+            br = self.BUTTON_RADIUS * self._s[i]
+            hovered = i == self._hovered
+
+            if hovered:
+                # 两层辉光晕（由亮到暗），悬停放大时一起膨胀 → 霓虹发光
+                for hrad, hfill in ((br + 12, self.GLOW_FAR), (br + 5, self.GLOW_NEAR)):
+                    c.create_oval(bx - hrad, by - hrad, bx + hrad, by + hrad,
+                                  fill=hfill, outline="")
+
+            c.create_oval(bx - br, by - br, bx + br, by + br,
+                          fill=self.BUTTON_BG,
+                          outline=self.OUTLINE_HOVER if hovered else self.OUTLINE_NORMAL,
+                          width=3 if hovered else 2)
+            c.create_text(bx, by, text=icon, font=self.ICON_FONT,
+                          fill=self.ICON_HOVER if hovered else self.ICON_NORMAL)
+            # 悬停才出字：放大过半才浮现，避免悬停瞬移闪烁
+            if hovered and self._s[i] > 1.06:
+                c.create_text(bx, by + br + 18, text=label,
+                              font=self.LABEL_FONT, fill=self.LABEL_FILL)
 
 
 class SettingsDialog:
