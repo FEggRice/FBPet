@@ -50,7 +50,7 @@ class PetWindow:
         # 右键径向轮盘菜单（游戏化动效），动作仍统一走 on_context 回调
         self._radial = RadialMenu(
             self.root,
-            [("settings", "设置"), ("hide", "隐藏到托盘"), ("quit", "退出")],
+            [("chat", "对话"), ("settings", "设置"), ("hide", "隐藏到托盘"), ("quit", "退出")],
             on_select=self.on_context,
         )
 

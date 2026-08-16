@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FBeePet 品牌图标：可爱小蜜蜂 -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>FBeePet</title>
+  <!-- 翅膀 -->
+  <ellipse cx="156" cy="150" rx="76" ry="100" fill="#d9eeff" stroke="#9cc9ea" stroke-width="10" transform="rotate(-25 156 150)"/>
+  <ellipse cx="356" cy="150" rx="76" ry="100" fill="#d9eeff" stroke="#9cc9ea" stroke-width="10" transform="rotate(25 356 150)"/>
+  <!-- 身体 -->
+  <circle cx="256" cy="300" r="150" fill="#ffc93c"/>
+  <!-- 黑色条纹 -->
+  <ellipse cx="256" cy="348" rx="150" ry="48" fill="#2f2416"/>
+  <ellipse cx="256" cy="424" rx="105" ry="38" fill="#2f2416"/>
+  <!-- 眼睛 -->
+  <circle cx="204" cy="252" r="17" fill="#2f2416"/>
+  <circle cx="308" cy="252" r="17" fill="#2f2416"/>
+  <circle cx="208" cy="247" r="6" fill="#ffffff"/>
+  <circle cx="312" cy="247" r="6" fill="#ffffff"/>
+  <!-- 嘴 -->
+  <path d="M236 302 Q256 322 276 302" stroke="#2f2416" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <!-- 触角 -->
+  <path d="M206 168 C194 122 178 96 148 84" stroke="#2f2416" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M306 168 C318 122 334 96 364 84" stroke="#2f2416" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <circle cx="148" cy="80" r="14" fill="#2f2416"/>
+  <circle cx="364" cy="80" r="14" fill="#2f2416"/>
+  <!-- 尾刺 -->
+  <path d="M256 446 L286 428 C270 416 242 416 226 428 Z" fill="#2f2416"/>
+</svg>

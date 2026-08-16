@@ -40,6 +40,12 @@ def default_config() -> dict:
                 "连续敲键盘太久了，喝口水、眺望远处，眼睛也需要休息哦！",
             ],
         },
+        "agent": {
+            "host": "127.0.0.1",
+            "port": 8000,
+            "python": "E:\\CountBot\\venv\\Scripts\\python.exe",
+            "dir": "FBeePet",
+        },
         "countFile": "key_counts.json",
     }
 

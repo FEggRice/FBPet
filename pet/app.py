@@ -13,6 +13,7 @@ import random
 import time
 
 from . import assets
+from .agent import AgentLauncher
 from .animator import SpriteAnimator
 from .audio import AudioPlayer
 from .config import PetConfig
@@ -68,6 +69,7 @@ class PetApp:
         self._last = time.perf_counter()
         self._last_save = time.time()
         self._settings: SettingsDialog | None = None
+        self._agent: AgentLauncher | None = None
 
         self.window.root.after(TICK_MS, self._tick)
         self.window.root.after(POLL_MS, self._poll)
@@ -146,13 +148,23 @@ class PetApp:
         self.events.emit("rest_reminder", total=total)
 
     def _on_context(self, action: str) -> None:
-        # 右键菜单动作：隐藏到托盘 / 打开设置 / 退出
+        # 右键菜单动作：隐藏到托盘 / 对话 / 打开设置 / 退出
         if action == "hide":
             self._hide_to_tray()
+        elif action == "chat":
+            self._open_agent()
         elif action == "settings":
             self._open_settings()
         elif action == "quit":
             self._quit()
+
+    def _open_agent(self) -> None:
+        # 打开对话：服务已在跑就直接开浏览器，否则拉起 FBeePet 服务再开界面
+        if self._agent is None:
+            self._agent = AgentLauncher(self.cfg.get("agent", default={}), self.cfg.base_dir)
+        if not self._agent.is_running():
+            self._agent.launch()
+        self._agent.open_ui()
 
     def _hide_to_tray(self) -> None:
         # 隐藏宠物窗口、显示托盘图标
@@ -266,10 +278,12 @@ class PetApp:
         self.window.root.mainloop()
 
     def _quit(self) -> None:
-        # 退出：保存计数、停键盘钩子/托盘、销毁窗口（各步容错）
+        # 退出：保存计数、停键盘钩子/托盘、终止 FBeePet 服务、销毁窗口（各步容错）
         self._save_counter()
         self.hook.stop()
         self.tray.stop()
+        if self._agent is not None:
+            self._agent.stop()
         try:
             self.window.root.quit()
             self.window.root.destroy()

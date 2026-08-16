@@ -3,13 +3,16 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
-# PyInstaller 构建产物
-build/
-dist/
+# Node 依赖(FBeePet 前端)
+node_modules/
 
 # 运行时数据（本地键盘统计/日志）
 key_counts.json
 *.log
+
+# FBeePet 运行时数据（数据库含 API key、工作区为用户数据，勿提交）
+FBeePet/data/
+FBeePet/workspace/
 
 # 本地工具配置
 .claude/

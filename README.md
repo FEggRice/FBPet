@@ -29,17 +29,6 @@ python main.py
 - `rest`：休息提醒阈值与提示语
 - `countFile`：键盘统计保存文件
 
-## 打包
-
-使用 PyInstaller：
-
-```bash
-pip install pyinstaller
-pyinstaller FBPet.spec
-```
-
-产物在 `dist/` 目录下。
-
 ## 测试
 
 ```bash
@@ -54,5 +43,5 @@ pytest
 ├── audio/             # 音效资源
 ├── tests/             # 单元测试
 ├── top.png            # 宠物精灵图
-└── FBPet.spec         # PyInstaller 打包配置
+└── start.bat          # 启动脚本（python main.py）
 ```
