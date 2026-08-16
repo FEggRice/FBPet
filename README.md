@@ -1,5 +1,7 @@
 # FBPet 桌面宠物 + FBeePet AI Agent —— 项目详细介绍
 
+<img src="sprites/pet_source.png" alt="桌宠精灵原图" width="200" align="left"/>
+
 FBPet 是一个常驻桌面右下角的桌面宠物应用,在传统桌宠(动画、键盘计数、休息提醒、托盘、音效)的基础上,通过右键菜单「对话」集成 **FBeePet** —— 一个面向中文用户的轻量 AI Agent 框架与运行中枢,让桌宠变身 AI 助手的入口。
 
 仓库由两部分组成,整体开源:
@@ -8,8 +10,6 @@ FBPet 是一个常驻桌面右下角的桌面宠物应用,在传统桌宠(动画
 | --- | --- | --- |
 | **FBPet 桌宠** | 桌面宠物本体(仓库根目录) | Python + tkinter + pystray |
 | **FBeePet** | 内置 AI Agent 框架与网页聊天界面(`FBeePet/`) | FastAPI + Vue 3 + SQLite |
-
-![桌宠精灵原图 (sprites/pet_source.png, 2048×2048)](sprites/pet_source.png)
 
 ---
 
