@@ -233,21 +233,21 @@ class ExecTool(Tool):
             if text:
                 env[name] = text
 
-        set_env("COUNTBOT_CHANNEL", context.get("channel"))
-        set_env("COUNTBOT_CHAT_ID", context.get("chat_id"))
-        set_env("COUNTBOT_SENDER_ID", context.get("sender_id"))
+        set_env("FBEEPET_CHANNEL", context.get("channel"))
+        set_env("FBEEPET_CHAT_ID", context.get("chat_id"))
+        set_env("FBEEPET_SENDER_ID", context.get("sender_id"))
         set_env(
-            "COUNTBOT_ACCOUNT_ID",
+            "FBEEPET_ACCOUNT_ID",
             metadata.get("account_id")
             or metadata.get("reply_account_id")
             or metadata.get("context_owner_account_id"),
         )
-        set_env("COUNTBOT_SOURCE_ACCOUNT_ID", metadata.get("source_account_id"))
-        set_env("COUNTBOT_REPLY_ACCOUNT_ID", metadata.get("reply_account_id"))
-        set_env("COUNTBOT_CONTEXT_OWNER_ACCOUNT_ID", metadata.get("context_owner_account_id"))
-        set_env("COUNTBOT_SESSION_SCOPE", metadata.get("session_scope"))
+        set_env("FBEEPET_SOURCE_ACCOUNT_ID", metadata.get("source_account_id"))
+        set_env("FBEEPET_REPLY_ACCOUNT_ID", metadata.get("reply_account_id"))
+        set_env("FBEEPET_CONTEXT_OWNER_ACCOUNT_ID", metadata.get("context_owner_account_id"))
+        set_env("FBEEPET_SESSION_SCOPE", metadata.get("session_scope"))
         if metadata:
-            env["COUNTBOT_MESSAGE_METADATA"] = json.dumps(
+            env["FBEEPET_MESSAGE_METADATA"] = json.dumps(
                 self._json_safe_metadata(metadata),
                 ensure_ascii=False,
             )

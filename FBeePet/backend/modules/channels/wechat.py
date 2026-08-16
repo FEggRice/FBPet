@@ -179,11 +179,11 @@ def _ensure_trailing_slash(url: str) -> str:
 
 def _build_common_headers() -> Dict[str, str]:
     headers: Dict[str, str] = {}
-    app_id = os.getenv("COUNTBOT_WECHAT_ILINK_APP_ID", "").strip()
+    app_id = os.getenv("FBEEPET_WECHAT_ILINK_APP_ID", "").strip()
     client_version = (
-        os.getenv("COUNTBOT_WECHAT_ILINK_APP_CLIENT_VERSION", "").strip() or "1"
+        os.getenv("FBEEPET_WECHAT_ILINK_APP_CLIENT_VERSION", "").strip() or "1"
     )
-    route_tag = os.getenv("COUNTBOT_WECHAT_ROUTE_TAG", "").strip()
+    route_tag = os.getenv("FBEEPET_WECHAT_ROUTE_TAG", "").strip()
 
     if app_id:
         headers["iLink-App-Id"] = app_id

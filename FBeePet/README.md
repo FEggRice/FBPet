@@ -58,7 +58,7 @@ FBeePet 由自然语言而生。FBeePet 的愿景，不是让更多人先学会�
   - 增强多渠道稳定性，补强微信、企微、飞书消息处理、去重与流式投递控制
   - 优化主动问候与定时执行逻辑，避免未成功投递时提前计次，并支持配置变更后刷新当日计划
   - 完善推理开关与运行时配置解析，补充不同提供商的思考字段映射与 persona 合并策略
-  - 统一启动时的监听地址与端口环境变量，补充 `COUNTBOT_HOST` / `COUNTBOT_PORT` 文档说明
+  - 统一启动时的监听地址与端口环境变量，补充 `FBEEPET_HOST` / `FBEEPET_PORT` 文档说明
   - 发布说明：[https://FBeePet.cn/docs/releases/v0.8.0](https://FBeePet.cn/docs/releases/v0.8.0)
 
 - **v0.7.0**
@@ -170,17 +170,17 @@ python start_app.py
 
 启动完成后默认打开 `http://127.0.0.1:8000`。
 
-可通过环境变量覆盖默认监听地址与端口，优先级为 `COUNTBOT_HOST` / `COUNTBOT_PORT` > 默认值。
+可通过环境变量覆盖默认监听地址与端口，优先级为 `FBEEPET_HOST` / `FBEEPET_PORT` > 默认值。
 
 ```powershell
-$env:COUNTBOT_HOST = '0.0.0.0'
-$env:COUNTBOT_PORT = '8001'
+$env:FBEEPET_HOST = '0.0.0.0'
+$env:FBEEPET_PORT = '8001'
 python start_app.py
 ```
 
 ```cmd
-set COUNTBOT_HOST=0.0.0.0
-set COUNTBOT_PORT=8001
+set FBEEPET_HOST=0.0.0.0
+set FBEEPET_PORT=8001
 python start_app.py
 ```
 

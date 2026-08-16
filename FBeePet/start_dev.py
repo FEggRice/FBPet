@@ -80,11 +80,11 @@ def main():
             # 即使监听 127.0.0.1，也显示可用的网络 IP 供参考
             if local_ips:
                 logger.info(f"Network: http://{host}:{port}")
-                logger.info("提示: 如需从其他设备访问，请设置 COUNTBOT_HOST=0.0.0.0")
+                logger.info("提示: 如需从其他设备访问，请设置 FBEEPET_HOST=0.0.0.0")
                 logger.info(f"可用网络 IP: {', '.join(local_ips)}")
             else:
                 logger.info(f"Network: http://{host}:{port}")
-                logger.info("提示: 如需从其他设备访问，请设置 COUNTBOT_HOST=0.0.0.0")
+                logger.info("提示: 如需从其他设备访问，请设置 FBEEPET_HOST=0.0.0.0")
         
         logger.info("-" * 60)
         logger.info("热重载已启用 - 文件更改将自动重启")

@@ -73,7 +73,7 @@ FBeePet was born from natural language. Its vision is not to require more people
   - Strengthened multi-channel reliability, especially for WeChat, WeCom, and Lark message handling, deduplication, and streaming delivery control
   - Optimized heartbeat and scheduled execution logic to avoid counting messages before successful delivery and to support schedule refresh after config changes
   - Improved reasoning switches and runtime config resolution with provider-specific thinking field mapping and persona merge rules
-  - Unified bind host and port environment variables and added documentation for `COUNTBOT_HOST` / `COUNTBOT_PORT`
+  - Unified bind host and port environment variables and added documentation for `FBEEPET_HOST` / `FBEEPET_PORT`
   - Release notes: [https://654321.ai/docs/releases/v0.8.0](https://654321.ai/docs/releases/v0.8.0)
 
 - **v0.7.0**
@@ -185,17 +185,17 @@ python start_app.py
 
 After startup, FBeePet opens at `http://127.0.0.1:8000` by default.
 
-You can override the default bind host and port with environment variables. Priority is `COUNTBOT_HOST` / `COUNTBOT_PORT` > defaults.
+You can override the default bind host and port with environment variables. Priority is `FBEEPET_HOST` / `FBEEPET_PORT` > defaults.
 
 ```powershell
-$env:COUNTBOT_HOST = '0.0.0.0'
-$env:COUNTBOT_PORT = '8001'
+$env:FBEEPET_HOST = '0.0.0.0'
+$env:FBEEPET_PORT = '8001'
 python start_app.py
 ```
 
 ```cmd
-set COUNTBOT_HOST=0.0.0.0
-set COUNTBOT_PORT=8001
+set FBEEPET_HOST=0.0.0.0
+set FBEEPET_PORT=8001
 python start_app.py
 ```
 

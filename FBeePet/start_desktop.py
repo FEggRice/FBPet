@@ -193,9 +193,9 @@ def _start_backend(host: str, port: int) -> None:
                 f"端口 {port} 已被占用\n\n"
                 "解决方法:\n"
                 "1. 关闭其他实例\n"
-                "2. 修改环境变量 COUNTBOT_PORT\n"
-                "   PowerShell: $env:COUNTBOT_PORT='8001'\n"
-                "   CMD: set COUNTBOT_PORT=8001"
+                "2. 修改环境变量 FBEEPET_PORT\n"
+                "   PowerShell: $env:FBEEPET_PORT='8001'\n"
+                "   CMD: set FBEEPET_PORT=8001"
             )
         else:
             _backend_error = f"后端服务启动失败:\n{exc}"

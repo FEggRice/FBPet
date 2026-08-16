@@ -106,7 +106,7 @@ def main() -> None:
                 logger.info(f"提示: 请检查网络连接或手动访问 http://<your-ip>:{port}")
         else:
             logger.info(f"Network: http://{host}:{port}")
-            logger.info("提示: 如需从其他设备访问，请设置 COUNTBOT_HOST=0.0.0.0")
+            logger.info("提示: 如需从其他设备访问，请设置 FBEEPET_HOST=0.0.0.0")
         
         logger.info("-" * 60)
         logger.info("浏览器将在 15 秒后自动打开")

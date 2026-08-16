@@ -8,30 +8,30 @@ import os
 DEFAULT_BIND_HOST = "127.0.0.1"
 DEFAULT_BIND_PORT = 8000
 
-COUNTBOT_HOST_ENV = "COUNTBOT_HOST"
-COUNTBOT_PORT_ENV = "COUNTBOT_PORT"
+FBEEPET_HOST_ENV = "FBEEPET_HOST"
+FBEEPET_PORT_ENV = "FBEEPET_PORT"
 
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::"}
 LOCAL_CLIENT_HOSTS = {"", "0.0.0.0", "::", "127.0.0.1", "::1", "localhost"}
 
 
 def resolve_bind_host(default: str = DEFAULT_BIND_HOST) -> str:
-    value = os.getenv(COUNTBOT_HOST_ENV, "").strip()
+    value = os.getenv(FBEEPET_HOST_ENV, "").strip()
     return value or default
 
 
 def resolve_bind_port(default: int = DEFAULT_BIND_PORT) -> int:
-    raw_value = os.getenv(COUNTBOT_PORT_ENV, "").strip()
+    raw_value = os.getenv(FBEEPET_PORT_ENV, "").strip()
     if not raw_value:
         return default
 
     try:
         port = int(raw_value)
     except ValueError as exc:
-        raise ValueError(f"{COUNTBOT_PORT_ENV} must be an integer") from exc
+        raise ValueError(f"{FBEEPET_PORT_ENV} must be an integer") from exc
 
     if not 1 <= port <= 65535:
-        raise ValueError(f"{COUNTBOT_PORT_ENV} must be between 1 and 65535")
+        raise ValueError(f"{FBEEPET_PORT_ENV} must be between 1 and 65535")
 
     return port
 
@@ -47,8 +47,8 @@ def apply_bind_env(host: str, port: int) -> None:
     normalized_host = (host or DEFAULT_BIND_HOST).strip() or DEFAULT_BIND_HOST
     normalized_port = str(port)
 
-    os.environ[COUNTBOT_HOST_ENV] = normalized_host
-    os.environ[COUNTBOT_PORT_ENV] = normalized_port
+    os.environ[FBEEPET_HOST_ENV] = normalized_host
+    os.environ[FBEEPET_PORT_ENV] = normalized_port
 
 
 def is_public_bind_host(host: str | None) -> bool:
