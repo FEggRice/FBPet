@@ -10,6 +10,9 @@ node_modules/
 key_counts.json
 *.log
 
+# 本地个性化配置（窗口/精灵/可选的 agent.python 覆盖，勿提交）
+config.json
+
 # FBeePet 运行时数据（数据库含 API key、工作区为用户数据，勿提交）
 FBeePet/data/
 FBeePet/workspace/

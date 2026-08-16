@@ -43,7 +43,7 @@ def default_config() -> dict:
         "agent": {
             "host": "127.0.0.1",
             "port": 8000,
-            "python": "E:\\CountBot\\venv\\Scripts\\python.exe",
+            "python": "",  # 空 = 用 PATH 上的 python；可在本地 config.json 覆盖为 venv 的 python.exe
             "dir": "FBeePet",
         },
         "countFile": "key_counts.json",
@@ -105,6 +105,8 @@ class PetConfig:
             data = json.load(f)
         merged = default_config()
         merged.update(data)
+        # agent 段深合并：config.json 只写想覆盖的字段（如 python）也能生效，host/port/dir 沿用默认
+        merged["agent"] = {**default_config()["agent"], **merged.get("agent", {})}
         base = os.path.dirname(os.path.abspath(path))
         return cls(merged, base)
 

@@ -28,6 +28,25 @@ python main.py
 - `audio`：音效文件路径
 - `rest`：休息提醒阈值与提示语
 - `countFile`：键盘统计保存文件
+- `agent`：对话 Agent 的 host / port / python / dir（可选）
+
+## 对话（FBeePet Agent）
+
+右键菜单「对话」拉起内置的 FBeePet 网页 Agent（FastAPI + Vue3），浏览器打开 http://127.0.0.1:8000。
+
+需要 Python 装有 `fastapi` / `uvicorn`：
+
+```bash
+pip install -r FBeePet/requirements.txt
+```
+
+默认使用 PATH 上的 `python` 运行；若要指定某个虚拟环境，在本地 `config.json` 里加一行即可（只写要覆盖的字段）：
+
+```json
+"agent": { "python": "C:\\your_venv\\Scripts\\python.exe" }
+```
+
+`config.json` 已在 .gitignore 中，不会提交到仓库。
 
 ## 测试
 
