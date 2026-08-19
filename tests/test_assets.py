@@ -34,11 +34,11 @@ def test_discover_sprites_prefers_sprites_folder():
 def test_discover_sounds_lists_wavs_in_audio_dir_only():
     with tempfile.TemporaryDirectory() as d:
         os.makedirs(os.path.join(d, "audio"))
-        for f in ("startup.wav", "custom.wav"):
+        for f in ("reminder.wav", "custom.wav"):
             _touch(os.path.join(d, "audio", f))
         _touch(os.path.join(d, "loose.wav"))  # not in audio/ → ignored
 
-        assert discover_sounds(d) == ["custom.wav", "startup.wav"]
+        assert discover_sounds(d) == ["custom.wav", "reminder.wav"]
 
 
 def test_discover_sounds_missing_audio_dir():

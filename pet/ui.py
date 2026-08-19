@@ -9,7 +9,7 @@ from tkinter import messagebox, ttk
 from PIL import ImageTk
 
 from .frames import load_frames
-from .radial import RadialMenu
+from .radial import RadialWheel
 
 
 class PetWindow:
@@ -48,7 +48,7 @@ class PetWindow:
         self._drag_start = None
         self._moved = False
         # 右键径向轮盘菜单（游戏化动效），动作仍统一走 on_context 回调
-        self._radial = RadialMenu(
+        self._radial = RadialWheel(
             self.root,
             [("chat", "对话"), ("settings", "设置"), ("hide", "隐藏到托盘"), ("quit", "退出")],
             on_select=self.on_context,
@@ -71,6 +71,7 @@ class PetWindow:
 
     def hide(self) -> None:
         # 隐藏窗口（隐藏到托盘时用）
+        self._radial.dismiss()
         self.root.withdraw()
 
     def show(self) -> None:
@@ -204,8 +205,8 @@ class BubbleWindow:
 class SettingsDialog:
     """Threshold + counter reset, plus idle-animation and sound-effect pickers."""
 
-    SOUND_KEYS = ("startup", "reminder")
-    SOUND_LABELS = {"startup": "启动音", "reminder": "提醒音"}
+    SOUND_KEYS = ("reminder",)
+    SOUND_LABELS = {"reminder": "提醒音"}
 
     def __init__(self, root, threshold: int, total: int, idles: list[str], current_idle: str,
                  sounds: list[str], current_sounds: dict,

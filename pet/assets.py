@@ -32,7 +32,7 @@ def discover_sounds(base_dir: str) -> list[str]:
 
 
 def ensure_assets(cfg, force: bool = False) -> None:
-    # 保证资源存在：精灵表 PNG 缺失则程序化生成；启动/点击/提醒三个 wav 缺失则生成。
+    # 保证资源存在：精灵表 PNG 缺失则程序化生成；点击/提醒两个 wav 缺失则生成。
     # force=True 时无条件重新生成
     sheet = cfg.sprite_sheet
     sheet_path = cfg.resolve(sheet.get("path", "pet.png"))
@@ -40,7 +40,7 @@ def ensure_assets(cfg, force: bool = False) -> None:
         os.makedirs(os.path.dirname(sheet_path) or ".", exist_ok=True)
         _generate_sprite_sheet(sheet_path, sheet)
 
-    for key, freq, seconds in (("startup", 660, 0.18), ("click", 880, 0.08), ("reminder", 440, 0.4)):
+    for key, freq, seconds in (("click", 880, 0.08), ("reminder", 440, 0.4)):
         path = cfg.resolve(cfg.audio.get(key, f"audio/{key}.wav"))
         if not os.path.exists(path):
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -49,7 +49,7 @@ def ensure_assets(cfg, force: bool = False) -> None:
 
 def _generate_sprite_sheet(path: str, sheet: dict) -> None:
     # 用 Pillow 程序化画一张 cols×rows 的精灵表：每个格子一个卡通圆脸，
-    # 三行分别用不同颜色代表 idle / spawn / clicked
+    # 两行分别用不同颜色代表 idle / clicked
     cols = sheet.get("cols", 8)
     rows = sheet.get("rows", 3)
     cw = sheet.get("cellWidth", 128)
@@ -57,7 +57,7 @@ def _generate_sprite_sheet(path: str, sheet: dict) -> None:
     img = Image.new("RGBA", (cols * cw, rows * ch), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    body_colors = [(255, 165, 0), (79, 195, 247), (240, 98, 146)]  # idle / spawn / clicked
+    body_colors = [(255, 165, 0), (240, 98, 146)]  # idle / clicked
     for r in range(rows):
         body = body_colors[r] if r < len(body_colors) else body_colors[-1]
         for c in range(cols):
@@ -68,9 +68,8 @@ def _generate_sprite_sheet(path: str, sheet: dict) -> None:
 
 
 def _draw_cell(d: ImageDraw.ImageDraw, x: int, y: int, cw: int, ch: int, body, row: int, t: float) -> None:
-    # 在精灵表 (x,y) 处画一个格子的脸：圆脸 + 眼睛（idle 行末尾会眨眼）+ 嘴（row2 画惊讶"o"）。
-    # row==1（spawn 行）时脸随 t 从小到大，模拟"长大入场"的效果
-    scale = 0.35 + 0.65 * t if row == 1 else 0.92  # spawn row grows in
+    # 在精灵表 (x,y) 处画一个格子的脸：圆脸 + 眼睛（idle 行末尾会眨眼）+ 嘴（clicked 行画惊讶"o"）
+    scale = 0.92
     cx = x + cw / 2.0
     cy = y + ch / 2.0 + ch * 0.04
     R = cw * 0.32 * scale
@@ -92,7 +91,7 @@ def _draw_cell(d: ImageDraw.ImageDraw, x: int, y: int, cw: int, ch: int, body, r
         d.ellipse([cx + eye_dx - eye_r, eye_y - eye_r, cx + eye_dx + eye_r, eye_y + eye_r], fill=ink)
 
     my = cy + R * 0.32
-    if row == 2:
+    if row == 1:
         d.ellipse([cx - R * 0.2, my - R * 0.05, cx + R * 0.2, my + R * 0.25], fill=ink)  # surprised "o"
     else:
         lw = int(max(2, R * 0.07))

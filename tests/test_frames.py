@@ -68,11 +68,11 @@ def test_per_state_file_gif_and_single_image():
     with tempfile.TemporaryDirectory() as d:
         _gif(os.path.join(d, "a.gif"))
         _save(Image.new("RGBA", (40, 40), (0, 0, 255, 255)), os.path.join(d, "b.png"))
-        animations = {"idle": {"file": "a.gif"}, "spawn": {"file": "b.png"}}
+        animations = {"idle": {"file": "a.gif"}, "reminder": {"file": "b.png"}}
         frames, size = load_frames(os.path.join(d, "missing.png"), d, {}, animations, box=(128, 128))
 
     assert len(frames["idle"]) == 3
-    assert len(frames["spawn"]) == 1
+    assert len(frames["reminder"]) == 1
     assert frames["idle"][0].size == (128, 128)
     assert size == (128, 128)  # display follows the idle state
 

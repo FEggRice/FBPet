@@ -34,14 +34,14 @@ class PetApp:
 
     def __init__(self, config_path: str) -> None:
         # 初始化整只宠物：加载配置 → 生成资源 → 建音频/窗口/气泡/托盘/键盘钩子
-        # → 状态机进入 spawn → 调度 _tick/_poll → 播放启动音
+        # → 状态机进入 idle → 调度 _tick/_poll
         self._config_path = config_path
         self.cfg = PetConfig.load(config_path)
         self.events = EventBus()
 
         assets.ensure_assets(self.cfg)
         self.audio = AudioPlayer()
-        for key in ("startup", "reminder"):
+        for key in ("reminder",):
             self.audio.register(key, self.cfg.resolve(self.cfg.audio.get(key, f"audio/{key}.wav")))
         self.audio.register_folder("click", self.cfg.resolve("audio/click"))
         self.audio.overlap = bool(self.cfg.get("audio", "overlap", default=False))
@@ -65,7 +65,7 @@ class PetApp:
 
         self._state = "idle"
         self._animator = SpriteAnimator(1, 1000, True)
-        self._goto("spawn")
+        self._goto("idle")
         self._last = time.perf_counter()
         self._last_save = time.time()
         self._settings: SettingsDialog | None = None
@@ -73,7 +73,6 @@ class PetApp:
 
         self.window.root.after(TICK_MS, self._tick)
         self.window.root.after(POLL_MS, self._poll)
-        self.audio.play("startup")
 
     # -- animation / state ---------------------------------------------------
 
@@ -208,7 +207,7 @@ class PetApp:
     def _on_settings_save(self, threshold: int, idle_file: str,
                           sounds: dict, ghost_mode: bool, pool_size: int | None,
                           scale: float) -> None:
-        # 保存设置：更新阈值/缩放/鬼畜/池/音效；「待机动画」只改 idle 不动 spawn；
+        # 保存设置：更新阈值/缩放/鬼畜/池/音效；「待机动画」只改 idle；
         # 写回 config、重载帧并立即重绘窗口
         self.cfg.rest["threshold"] = threshold
         self.cfg.data.setdefault("window", {})["scale"] = scale
@@ -221,7 +220,7 @@ class PetApp:
             if name:
                 self.cfg.audio[key] = f"audio/{name}"
         if idle_file:
-            # 只换待机：开场动画(spawn)保持不动
+            # 只换待机动画
             self.cfg.animations["idle"]["file"] = os.path.join(assets.SPRITES_DIR, idle_file)
         self.cfg.save(self._config_path)
         self._replace_counter(KeyCounter.from_dict(self.counter.to_dict(), threshold))

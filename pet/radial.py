@@ -152,6 +152,247 @@ ICONS: dict[str, Callable] = {
 }
 
 
+def _icon_chat(cv: tk.Canvas, x: float, y: float, r: float, color: str) -> None:
+    """Minimal chat-bubble icon that stays crisp at both idle and hover sizes."""
+    pts = _rounded_points(x - 0.72 * r, y - 0.58 * r,
+                          x + 0.72 * r, y + 0.48 * r, 0.18 * r)
+    cv.create_polygon(pts, fill="", outline=color, width=2.2)
+    cv.create_line(x - 0.28 * r, y + 0.47 * r,
+                   x - 0.48 * r, y + 0.78 * r,
+                   x - 0.03 * r, y + 0.5 * r,
+                   fill=color, width=2.2)
+    cv.create_oval(x - 0.34 * r, y - 0.05 * r, x - 0.22 * r, y + 0.07 * r,
+                   fill=color, outline=color)
+    cv.create_oval(x - 0.06 * r, y - 0.05 * r, x + 0.06 * r, y + 0.07 * r,
+                   fill=color, outline=color)
+    cv.create_oval(x + 0.22 * r, y - 0.05 * r, x + 0.34 * r, y + 0.07 * r,
+                   fill=color, outline=color)
+
+
+ICONS["chat"] = _icon_chat
+
+
+class RadialWheel:
+    """Compact neon wheel used by the desktop pet's right-click action."""
+
+    SIZE = 292
+    CENTER = SIZE // 2
+    BUTTON_R = 25
+    ORBIT_R = 82
+    OPEN_MS = 430
+    FRAME_MS = 16
+    STAGGER = 0.075
+    ROTATION = 0.55
+    HOVER_SCALE = 1.16
+
+    def __init__(self, root: tk.Tk, items: list[tuple[str, str]],
+                 on_select: Callable[[str], None],
+                 on_dismiss: Callable[[], None] | None = None,
+                 transparent: str = "#ff00ff") -> None:
+        self._root = root
+        self._items = list(items)
+        self._on_select = on_select
+        self._on_dismiss = on_dismiss
+        self._transparent = transparent
+        self._open = False
+        self._closed = False
+        self._after_id = None
+        self._t0 = 0.0
+        self._cx = self._cy = 0.0
+        self._hovered: int | None = None
+        self._prev_hovered: int | None = None
+        self._hover_at = 0.0
+        self._release_at = 0.0
+
+        self._win = tk.Toplevel(root)
+        self._win.overrideredirect(True)
+        self._win.attributes("-topmost", True)
+        try:
+            self._win.attributes("-transparentcolor", transparent)
+        except tk.TclError:
+            pass
+        self._win.configure(bg=transparent)
+        self._cv = tk.Canvas(self._win, width=self.SIZE, height=self.SIZE,
+                             bg=transparent, highlightthickness=0, bd=0)
+        self._cv.pack()
+        self._cv.bind("<Motion>", self._on_motion)
+        self._win.bind("<ButtonPress-1>", self._on_click)
+        self._win.bind("<ButtonPress-3>", lambda _e: self.dismiss())
+        self._win.bind("<Escape>", lambda _e: self.dismiss())
+        self._win.protocol("WM_DELETE_WINDOW", self.dismiss)
+        self._win.withdraw()
+
+    def is_open(self) -> bool:
+        return self._open
+
+    def popup(self, x_root: int, y_root: int) -> None:
+        sw = self._root.winfo_screenwidth()
+        sh = self._root.winfo_screenheight()
+        extent = self.SIZE / 2
+        self._cx = clamp(x_root, extent, sw - extent)
+        self._cy = clamp(y_root, extent, sh - extent)
+        self._win.geometry(f"{self.SIZE}x{self.SIZE}+{int(self._cx - extent)}+{int(self._cy - extent)}")
+        self._open = True
+        self._closed = False
+        self._t0 = time.perf_counter()
+        self._hovered = self._prev_hovered = None
+        self._hover_at = self._release_at = 0.0
+        self._win.deiconify()
+        self._win.lift()
+        self._win.focus_force()
+        try:
+            self._win.grab_set()
+        except tk.TclError:
+            pass
+        self._draw(0.0)
+        self._win.after(self.FRAME_MS, self._tick)
+
+    def dismiss(self) -> None:
+        if not self._open:
+            return
+        self._open = False
+        try:
+            self._win.grab_release()
+        except tk.TclError:
+            pass
+        self._win.withdraw()
+        if self._on_dismiss:
+            self._on_dismiss()
+
+    def _tick(self) -> None:
+        if not self._open:
+            return
+        try:
+            self._draw(time.perf_counter() - self._t0)
+            self._after_id = self._win.after(self.FRAME_MS, self._tick)
+        except tk.TclError:
+            self._open = False
+
+    def _item_position(self, index: int, elapsed: float) -> tuple[float, float, float, float]:
+        n = max(1, len(self._items))
+        base_angle = math.radians(-90 + index * 360 / n)
+        item_t = clamp((elapsed - index * self.STAGGER) / (self.OPEN_MS / 1000 * 0.925), 0.0, 1.0)
+        radius = self.ORBIT_R * ease_out_back(item_t)
+        angle = base_angle - self.ROTATION * (1 - clamp(elapsed / (self.OPEN_MS / 1000), 0.0, 1.0))
+        hover = self._hover_progress(index, elapsed)
+        radius += 10 * hover
+        return (self.CENTER + math.cos(angle) * radius,
+                self.CENTER + math.sin(angle) * radius,
+                angle, hover)
+
+    def _draw(self, elapsed: float) -> None:
+        cv = self._cv
+        cv.delete("all")
+        c = float(self.CENTER)
+        cv.create_oval(c - 67, c - 67, c + 67, c + 67,
+                       fill="#06252d", outline="#063e49", width=7)
+        cv.create_oval(c - 61, c - 61, c + 61, c + 61,
+                       fill="#071a21", outline="#00b8cb", width=2)
+        cv.create_oval(c - 47, c - 47, c + 47, c + 47,
+                       fill="#0b2229", outline="#0a5967", width=1)
+        cv.create_text(c, c - 7, text="MENU", fill="#66d8e5",
+                       font=("Segoe UI", 8, "bold"))
+        cv.create_text(c, c + 9, text="右键操作", fill="#53828a",
+                       font=("Microsoft YaHei UI", 8))
+
+        for index, (action, label) in enumerate(self._items):
+            x, y, angle, hover = self._item_position(index, elapsed)
+            p = clamp((elapsed - index * self.STAGGER) / (self.OPEN_MS / 1000 * 0.925), 0.0, 1.0)
+            if p <= 0:
+                continue
+            # The button scales out with its radial travel, then the hover
+            # spring adds a second, independent emphasis.
+            r = self.BUTTON_R * (0.18 + 0.82 * p) * (1 + 0.16 * hover)
+            hot = index == self._hovered
+            if hot:
+                cv.create_oval(x - r - 9, y - r - 9, x + r + 9, y + r + 9,
+                               fill="#07515c", outline="#00e4f5", width=3)
+                cv.create_oval(x - r - 4, y - r - 4, x + r + 4, y + r + 4,
+                               fill="#103d45", outline="#43f3ff", width=2)
+            else:
+                cv.create_oval(x - r - 5, y - r - 5, x + r + 5, y + r + 5,
+                               fill="#062d35", outline="#087887", width=2)
+                cv.create_oval(x - r, y - r, x + r, y + r,
+                               fill="#0b2026", outline="#0c4c57", width=1)
+            icon = ICONS.get(action, _icon_settings)
+            icon(cv, x, y, r * (0.55 if p > 0 else 0.1),
+                 "#ffffff" if hot else "#67d8e5")
+            if hot and hover > 0.02:
+                self._draw_label(cv, label, x, y, r, hover, angle)
+
+    def _hover_progress(self, index: int, elapsed: float) -> float:
+        if index == self._hovered:
+            return ease_out_back(clamp((elapsed - self._hover_at) / 0.22, 0.0, 1.0))
+        if index == self._prev_hovered and self._release_at > 0:
+            return 1 - ease_out_cubic(clamp((elapsed - self._release_at) / 0.14, 0.0, 1.0))
+        return 0.0
+
+    def _draw_label(self, cv: tk.Canvas, label: str, x: float, y: float,
+                    r: float, hover: float, angle: float) -> None:
+        font = ("Microsoft YaHei UI", 10, "bold")
+        probe = cv.create_text(x, y, text=label, font=font, fill="#d6fbff")
+        bbox = cv.bbox(probe)
+        cv.delete(probe)
+        if not bbox:
+            return
+        x1, y1, x2, y2 = bbox
+        half_w, half_h = (x2 - x1) / 2 + 12, (y2 - y1) / 2 + 6
+        lx = clamp(x + math.cos(angle) * (r + 39), half_w + 2, self.SIZE - half_w - 2)
+        ly = clamp(y + math.sin(angle) * (r + 39), half_h + 2, self.SIZE - half_h - 2)
+        pts = _rounded_points(lx - half_w, ly - half_h, lx + half_w, ly + half_h, 8)
+        cv.create_polygon(pts, fill="#071a21", outline="#17d2e1", width=1.5)
+        cv.create_text(lx, ly, text=label, fill="#d6fbff", font=font)
+
+    def _on_motion(self, event) -> None:
+        if not self._open:
+            return
+        elapsed = time.perf_counter() - self._t0
+        selected = None
+        for i in range(len(self._items)):
+            p = clamp((elapsed - i * self.STAGGER) / (self.OPEN_MS / 1000 * 0.925), 0.0, 1.0)
+            if p <= 0:
+                continue
+            x, y, _, hover = self._item_position(i, elapsed)
+            if math.hypot(event.x_root - (self._cx - self.CENTER + x),
+                          event.y_root - (self._cy - self.CENTER + y)) <= self.BUTTON_R * (1 + 0.16 * hover) + 10:
+                selected = i
+                break
+        self._set_hover(selected)
+
+    def _on_click(self, event) -> None:
+        if not self._open:
+            return
+        elapsed = time.perf_counter() - self._t0
+        selected = None
+        for i in range(len(self._items)):
+            p = clamp((elapsed - i * self.STAGGER) / (self.OPEN_MS / 1000 * 0.925), 0.0, 1.0)
+            if p <= 0:
+                continue
+            x, y, _, hover = self._item_position(i, elapsed)
+            if math.hypot(event.x_root - (self._cx - self.CENTER + x),
+                          event.y_root - (self._cy - self.CENTER + y)) <= self.BUTTON_R * (1 + 0.16 * hover) + 10:
+                selected = i
+                break
+        if selected is None:
+            self.dismiss()
+            return
+        action = self._items[selected][0]
+        self.dismiss()
+        self._on_select(action)
+
+    def _set_hover(self, index: int | None) -> None:
+        if index == self._hovered:
+            return
+        now = time.perf_counter() - self._t0
+        if self._hovered is not None:
+            self._prev_hovered = self._hovered
+            self._release_at = now
+        self._hovered = index
+        if index is not None:
+            self._hover_at = now
+        self._cv.config(cursor="hand2" if index is not None else "")
+
+
 class RadialMenu:
     """径向轮盘菜单：在鼠标位置弹出，弹簧展开、悬停放大发光、点击选择。"""
 
